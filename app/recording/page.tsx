@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Pause, Square } from "lucide-react";
 import { motion } from "framer-motion";
@@ -21,6 +21,11 @@ export default function RecordingPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -32,29 +37,82 @@ export default function RecordingPage() {
     return () => clearInterval(interval);
   }, [isRecording, isPaused]);
 
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleStartStop = () => {
+  const handleStartStop = async () => {
+    console.log('Button clicked!', { isRecording });
+    
     if (!isRecording) {
-      setIsRecording(true);
+      try {
+        console.log('Requesting microphone access...');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('Microphone access granted');
+        
+        streamRef.current = stream;
+        chunksRef.current = [];
+
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+        setError(null);
+        console.log('Recording started');
+      } catch (err) {
+        console.error('Recording error:', err);
+        setError('Failed to access microphone');
+        alert('Cannot access microphone. Please check permissions.');
+      }
     } else {
-      router.push(`/post-record?duration=${duration}&subjectId=${subject.id}`);
+      console.log('Stopping recording...');
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        
+        mediaRecorderRef.current.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          localStorage.setItem('recordingBlob', url);
+          
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+          }
+          
+          console.log('Recording stopped, navigating...');
+          router.push(`/post-record?duration=${duration}&subjectId=${subject.id}`);
+        };
+      }
     }
   };
 
   const handlePause = () => {
-    setIsPaused(!isPaused);
+    console.log('Pause clicked!', { isPaused });
+    if (!mediaRecorderRef.current) return;
+
+    if (isPaused) {
+      mediaRecorderRef.current.resume();
+      setIsPaused(false);
+    } else {
+      mediaRecorderRef.current.pause();
+      setIsPaused(true);
+    }
+  };
+
+  const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+    return `${minutes}:${seconds}`;
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white py-8 px-2">
-      <div className="w-full max-w-md bg-white rounded-4xl shadow-purple overflow-hidden" style={{ minHeight: 700, boxShadow: '0 8px 32px 0 rgba(80, 0, 200, 0.10)' }}>
-        <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
+    <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
+      <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
+        <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 to-white">
           {/* Header */}
           <div className="px-6 pt-16 pb-6">
             <button
@@ -121,27 +179,26 @@ export default function RecordingPage() {
             </div>
 
             {/* Record Button */}
-            <div className="relative mb-8">
+            <div className="relative mb-8 z-50">
               <button
-                onClick={handleStartStop}
-                className="relative"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleStartStop();
+                }}
+                className="relative bg-transparent border-0 p-0 cursor-pointer touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+                type="button"
               >
-                <motion.div
+                <div
                   className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg ${
                     isRecording
                       ? "bg-purple-500"
                       : "bg-gradient-to-br from-purple-500 to-purple-600"
                   }`}
-                  animate={
-                    isRecording && !isPaused
-                      ? {
-                          scale: [1, 1.05, 1],
-                        }
-                      : { scale: 1 }
-                  }
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
+                  style={{
+                    transform: isRecording && !isPaused ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'transform 1.5s ease-in-out',
                   }}
                 >
                   {isRecording ? (
@@ -149,23 +206,25 @@ export default function RecordingPage() {
                   ) : (
                     <div className="w-6 h-6 rounded-full bg-red-500" />
                   )}
-                </motion.div>
+                </div>
 
                 {isRecording && !isPaused && (
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-purple-400 -z-10"
-                    animate={{
-                      scale: [1, 1.5, 1],
-                      opacity: [0.5, 0, 0.5],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
+                  <div
+                    className="absolute inset-0 rounded-full bg-purple-400 pointer-events-none"
+                    style={{
+                      zIndex: -1,
+                      animation: 'pulse 2s ease-in-out infinite',
                     }}
                   />
                 )}
               </button>
             </div>
+
+            {error && (
+              <div className="text-sm text-red-500 mb-4 text-center px-4">
+                {error}
+              </div>
+            )}
 
             <div className="text-sm text-gray-500 mb-8">
               {isRecording ? (isPaused ? "Paused" : "Recording...") : "Tap to start"}
@@ -174,8 +233,14 @@ export default function RecordingPage() {
             {/* Pause Button */}
             {isRecording && (
               <button
-                onClick={handlePause}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handlePause();
+                }}
+                className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50"
+                type="button"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
                 <Pause className="w-5 h-5" />
                 <span>{isPaused ? "Resume" : "Pause"}</span>

@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import Dashboard from "./components/Homepage";
 import { Subject, Recording } from "./types";
 
@@ -51,16 +52,29 @@ const recordings: Recording[] = [
 ];
 
 export default function Home() {
-  // Dummy handlers for now (no navigation)
+  const router = useRouter();
+
+  const handleStartRecording = (subject: Subject) => {
+    router.push(`/recording?subjectId=${subject.id}`);
+  };
+
+  const handleNavigateToSubjects = () => {
+    router.push("/subject-selection");
+  };
+
+  const handleNavigateToNotesList = (subjectId: string) => {
+    router.push(`/notes?subjectId=${subjectId}`);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white py-8 px-2">
-      <div className="w-full max-w-md bg-white rounded-4xl shadow-purple p-0 overflow-hidden" style={{ minHeight: 700, boxShadow: '0 8px 32px 0 rgba(80, 0, 200, 0.10)' }}>
+    <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
+      <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
         <Dashboard
           subjects={subjects}
           recordings={recordings}
-          onStartRecording={() => {}}
-          onNavigateToSubjects={() => {}}
-          onNavigateToNotesList={() => {}}
+          onStartRecording={handleStartRecording}
+          onNavigateToSubjects={handleNavigateToSubjects}
+          onNavigateToNotesList={handleNavigateToNotesList}
         />
       </div>
     </div>
