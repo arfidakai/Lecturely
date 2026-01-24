@@ -32,7 +32,7 @@ export default function Homepage({
       <div className="px-6 pt-16 pb-8">
         <div className="text-sm text-purple-400 mb-2">{today}</div>
         <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
-        <p className="text-gray-500">Ready to capture knowledge?</p>
+        <p className="text-gray-500">Ready to record knowledge?</p>
         
       </div>
     

@@ -50,9 +50,9 @@ export default function TranscriptionPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white py-8 px-2">
-      <div className="w-full max-w-md bg-white rounded-4xl shadow-purple overflow-hidden" style={{ minHeight: 700, boxShadow: '0 8px 32px 0 rgba(80, 0, 200, 0.10)' }}>
-        <div className="h-full flex flex-col bg-white">
+    <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
+      <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
+        <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 to-white">
           {/* Header */}
           <div className="px-6 pt-16 pb-4 border-b border-gray-100 bg-gradient-to-b from-purple-50 to-white">
             <div className="flex items-center gap-4 mb-4">
