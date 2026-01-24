@@ -1,6 +1,7 @@
 "use client";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock, Calendar, CheckCircle, Save } from "lucide-react";
+import { Clock, Calendar, CheckCircle, Save, Loader2 } from "lucide-react";
 import { Subject } from "../types";
 
 const subjects: Subject[] = [
@@ -15,7 +16,11 @@ export default function PostRecordPage() {
   const searchParams = useSearchParams();
   const duration = parseInt(searchParams.get("duration") || "0");
   const subjectId = searchParams.get("subjectId");
+  const recordingId = searchParams.get("recordingId");
   const subject = subjects.find((s) => s.id === subjectId) || subjects[0];
+  
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
 
   const durationMin = Math.floor(duration / 60);
   const durationSec = duration % 60;
@@ -31,8 +36,52 @@ export default function PostRecordPage() {
     minute: "2-digit",
   });
 
-  const handleTranscribe = () => {
-    router.push(`/transcription?subjectId=${subjectId}&duration=${duration}`);
+  const handleTranscribe = async () => {
+    if (!recordingId) {
+      alert('Recording ID not found');
+      return;
+    }
+
+    setIsTranscribing(true);
+    setTranscriptionError(null);
+
+    try {
+      // Get audio blob from localStorage (temporary)
+      const audioUrl = localStorage.getItem('recordingBlob');
+      if (!audioUrl) {
+        throw new Error('Audio file not found');
+      }
+
+      // Convert blob URL to File
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const audioFile = new File([blob], 'recording.webm', { type: 'audio/webm' });
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('audio', audioFile);
+      formData.append('recordingId', recordingId);
+
+      // Call transcribe API
+      const transcribeResponse = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!transcribeResponse.ok) {
+        throw new Error('Transcription failed');
+      }
+
+      const result = await transcribeResponse.json();
+      console.log('Transcription result:', result);
+
+      // Navigate to transcription page
+      router.push(`/transcription?recordingId=${recordingId}&subjectId=${subjectId}`);
+    } catch (error) {
+      console.error('Transcription error:', error);
+      setTranscriptionError('Failed to transcribe audio. Please try again.');
+      setIsTranscribing(false);
+    }
   };
 
   const handleSaveLater = () => {
@@ -84,18 +133,35 @@ export default function PostRecordPage() {
 
           {/* Actions */}
           <div className="px-6 pb-12 mt-auto">
+            {transcriptionError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-center">
+                {transcriptionError}
+              </div>
+            )}
+            
             <div className="space-y-3">
               <button
                 onClick={handleTranscribe}
-                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl py-4 px-6 shadow-lg shadow-purple-200 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                disabled={isTranscribing}
+                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl py-4 px-6 shadow-lg shadow-purple-200 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="text-base">Transcribe Now</span>
-                <span className="text-xl">✨</span>
+                {isTranscribing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-base">Transcribing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-base">Transcribe Now</span>
+                    <span className="text-xl">✨</span>
+                  </>
+                )}
               </button>
 
               <button
                 onClick={handleSaveLater}
-                className="w-full bg-white text-gray-700 rounded-2xl py-4 px-6 border-2 border-gray-200 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                disabled={isTranscribing}
+                className="w-full bg-white text-gray-700 rounded-2xl py-4 px-6 border-2 border-gray-200 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-5 h-5" />
                 <span className="text-base">Save for Later</span>

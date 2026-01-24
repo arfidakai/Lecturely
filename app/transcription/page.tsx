@@ -1,69 +1,52 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Play, Pause, Star, Sparkles } from "lucide-react";
-import { Recording, TranscriptionSegment } from "../types";
-
-const sampleRecording: Recording = {
-  id: "1",
-  subjectId: "1",
-  subjectName: "Computer Science",
-  date: "2026-01-11T10:00:00",
-  duration: 3600,
-  transcribed: true,
-  transcription: [
-    {
-      id: "t1",
-      text: "Today we'll be discussing data structures, specifically focusing on binary trees and their applications.",
-      timestamp: 0,
-      important: false,
-    },
-    {
-      id: "t2",
-      text: "A binary tree is a hierarchical data structure where each node has at most two children.",
-      timestamp: 45,
-      important: true,
-    },
-    {
-      id: "t3",
-      text: "Binary search trees are particularly efficient for searching operations with O(log n) time complexity.",
-      timestamp: 120,
-      important: true,
-    },
-  ],
-};
+import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
 
 export default function TranscriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recordingId = searchParams.get("recordingId");
-  const recording = sampleRecording;
+  const subjectId = searchParams.get("subjectId");
 
-  const [playingSegment, setPlayingSegment] = useState<string | null>(null);
-  const [selectedSegments, setSelectedSegments] = useState<Set<string>>(new Set());
+  const [transcription, setTranscription] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const formatTimestamp = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  useEffect(() => {
+    if (!recordingId) {
+      setError("Recording ID not found");
+      setIsLoading(false);
+      return;
+    }
+
+    // Fetch transcription from database
+    fetchTranscription();
+  }, [recordingId]);
+
+  const fetchTranscription = async () => {
+    try {
+      const response = await fetch(`/api/transcriptions/${recordingId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch transcription');
+      }
+
+      const data = await response.json();
+      setTranscription(data.text || "No transcription available");
+    } catch (error) {
+      console.error('Error fetching transcription:', error);
+      setError('Failed to load transcription');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSummary = () => {
+    router.push(`/ai-summary?recordingId=${recordingId}&subjectId=${subjectId}`);
   };
 
   const handleSegmentClick = (segmentId: string) => {
     setPlayingSegment(playingSegment === segmentId ? null : segmentId);
-  };
-
-  const handleMarkImportant = (segmentId: string) => {
-    const newSelected = new Set(selectedSegments);
-    if (newSelected.has(segmentId)) {
-      newSelected.delete(segmentId);
-    } else {
-      newSelected.add(segmentId);
-    }
-    setSelectedSegments(newSelected);
-  };
-
-  const handleViewSummary = () => {
-    router.push(`/ai-summary?recordingId=${recording.id}`);
   };
 
   return (
@@ -80,88 +63,64 @@ export default function TranscriptionPage() {
                 <ChevronLeft className="w-6 h-6 text-gray-700" />
               </button>
               <div className="flex-1">
-                <h1 className="text-xl text-gray-900">{recording.subjectName}</h1>
+                <h1 className="text-xl text-gray-900">Transcription</h1>
                 <p className="text-xs text-gray-500">
-                  {new Date(recording.date).toLocaleDateString("en-US", {
+                  {new Date().toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                   })}
                 </p>
               </div>
-              <button
-                onClick={handleViewSummary}
-                className="p-2.5 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 transition-colors active:scale-95"
-              >
-                <Sparkles className="w-5 h-5" />
-              </button>
+              {!isLoading && !error && (
+                <button
+                  onClick={handleGenerateSummary}
+                  className="p-2.5 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 transition-colors active:scale-95"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Transcription Segments */}
+          {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="space-y-4">
-              {recording.transcription?.map((segment) => (
-                <div
-                  key={segment.id}
-                  className={`rounded-2xl p-4 transition-all ${
-                    segment.important || selectedSegments.has(segment.id)
-                      ? "bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200"
-                      : "bg-gray-50 border-2 border-transparent"
-                  }`}
-                >
-                  <div className="flex items-start gap-3 mb-3">
-                    <button
-                      onClick={() => handleSegmentClick(segment.id)}
-                      className={`p-2 rounded-full transition-all active:scale-95 ${
-                        playingSegment === segment.id
-                          ? "bg-purple-500 text-white"
-                          : "bg-white text-purple-500 shadow-sm"
-                      }`}
-                    >
-                      {playingSegment === segment.id ? (
-                        <Pause className="w-4 h-4" />
-                      ) : (
-                        <Play className="w-4 h-4" />
-                      )}
-                    </button>
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs px-2 py-1 bg-white rounded-full text-purple-600">
-                          {formatTimestamp(segment.timestamp)}
-                        </span>
-                        <button
-                          onClick={() => handleMarkImportant(segment.id)}
-                          className="ml-auto"
-                        >
-                          <Star
-                            className={`w-4 h-4 transition-colors ${
-                              segment.important || selectedSegments.has(segment.id)
-                                ? "fill-purple-500 text-purple-500"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {segment.text}
-                      </p>
-                    </div>
-                  </div>
+            {isLoading ? (
+              <div className="h-full flex flex-col items-center justify-center">
+                <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
+                <p className="text-gray-500">Loading transcription...</p>
+              </div>
+            ) : error ? (
+              <div className="h-full flex flex-col items-center justify-center">
+                <div className="text-red-500 mb-4 text-center">
+                  <p className="font-medium">Error</p>
+                  <p className="text-sm">{error}</p>
                 </div>
-              ))}
-            </div>
+                <button
+                  onClick={() => router.back()}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-xl"
+                >
+                  Go Back
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-2xl p-6">
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {transcription}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Info Banner */}
-          <div className="px-6 pb-6">
-            <div className="bg-purple-50 rounded-2xl p-4 text-center">
-              <p className="text-xs text-purple-700">
-                💡 Tap any segment to replay audio
-              </p>
+          {!isLoading && !error && (
+            <div className="px-6 pb-6">
+              <div className="bg-purple-50 rounded-2xl p-4 text-center">
+                <p className="text-xs text-purple-700">
+                  ✨ Click the sparkle icon to generate AI summary
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

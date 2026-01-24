@@ -76,6 +76,9 @@ export default function RecordingPage() {
         mediaRecorderRef.current.onstop = async () => {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
           
+          const blobUrl = URL.createObjectURL(blob);
+          localStorage.setItem('recordingBlob', blobUrl);
+          
           console.log('Recording stopped, saving to Supabase...');
           setIsSaving(true);
           
