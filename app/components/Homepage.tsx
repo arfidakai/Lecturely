@@ -1,6 +1,7 @@
 "use client";
 import { Mic, BookOpen, Clock } from "lucide-react";
 import { Subject, Recording } from "../types";
+import { getSlugFromUUID } from "../lib/subjectMapping";
 
 type DashboardProps = {
   subjects: Subject[];
@@ -40,7 +41,7 @@ export default function Homepage({
       <div className="px-6 mb-8">
         <button
           onClick={onNavigateToSubjects}
-          className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-3xl py-5 px-6 shadow-lg shadow-purple-200 flex items-center justify-center gap-3 hover:shadow-xl transition-all active:scale-[0.98]"
+          className="w-full bg-gradient-to-r from-pur ple-500 to-purple-600 text-white rounded-3xl py-5 px-6 shadow-lg shadow-purple-200 flex items-center justify-center gap-3 hover:shadow-xl transition-all active:scale-[0.98]"
         >
           <div className="bg-white/20 p-2 rounded-full">
             <Mic className="w-6 h-6" />
@@ -104,11 +105,12 @@ export default function Homepage({
               minute: "2-digit",
             });
             const durationMin = Math.floor(recording.duration / 60);
+            const subjectSlug = getSlugFromUUID(recording.subjectId) || recording.subjectId;
 
             return (
               <button
                 key={recording.id}
-                onClick={() => onNavigateToNotesList(recording.subjectId)}
+                onClick={() => onNavigateToNotesList(subjectSlug)}
                 className="w-full bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
               >
                 <div className="flex items-start gap-3">

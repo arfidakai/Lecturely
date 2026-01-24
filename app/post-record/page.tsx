@@ -47,8 +47,7 @@ export default function PostRecordPage() {
     setTranscriptionError(null);
 
     try {
-      // Call transcribe API with just the recording ID
-      // API will download audio from Supabase storage
+      
       const transcribeResponse = await fetch('/api/transcribe', {
         method: 'POST',
         headers: {
@@ -65,7 +64,6 @@ export default function PostRecordPage() {
       const result = await transcribeResponse.json();
       console.log('Transcription result:', result);
 
-      // Clean up localStorage
       localStorage.removeItem('recordingBlob');
 
       // Navigate to transcription page
@@ -78,13 +76,15 @@ export default function PostRecordPage() {
   };
 
   const handleSaveLater = () => {
-    // Clean up localStorage
     localStorage.removeItem('recordingBlob');
+    // Trigger refresh event before navigating
+    window.dispatchEvent(new Event('refreshRecordings'));
     router.push("/");
   };
 
   const handleCancel = async () => {
     if (!recordingId) {
+      window.dispatchEvent(new Event('refreshRecordings'));
       router.push("/");
       return;
     }
@@ -99,7 +99,6 @@ export default function PostRecordPage() {
     setTranscriptionError(null);
 
     try {
-      // Delete recording from database and storage
       const response = await fetch(`/api/recordings/${recordingId}`, {
         method: 'DELETE',
       });
@@ -108,11 +107,8 @@ export default function PostRecordPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to delete recording');
       }
-
-      // Clean up localStorage
       localStorage.removeItem('recordingBlob');
-
-      // Navigate back to home
+      window.dispatchEvent(new Event('refreshRecordings'));
       router.push("/");
     } catch (error) {
       console.error('Delete error:', error);
