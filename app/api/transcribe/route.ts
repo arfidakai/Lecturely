@@ -11,14 +11,12 @@ const groq = new Groq({
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    
-    const audioFile = formData.get('audio') as File;
-    const recordingId = formData.get('recordingId') as string;
+    const body = await request.json();
+    const recordingId = body.recordingId as string;
 
-    if (!audioFile || !recordingId) {
+    if (!recordingId) {
       return NextResponse.json(
-        { error: 'Missing audio file or recording ID' },
+        { error: 'Missing recording ID' },
         { status: 400 }
       );
     }
@@ -26,6 +24,22 @@ export async function POST(request: NextRequest) {
     console.log('Starting transcription for recording:', recordingId);
 
     const recording = await recordingService.getRecording(recordingId);
+    
+    if (!recording || !recording.audio_url) {
+      return NextResponse.json(
+        { error: 'Recording not found or no audio file' },
+        { status: 404 }
+      );
+    }
+
+    console.log('Downloading audio from storage:', recording.audio_url);
+    const audioBlob = await storageService.downloadAudio(recording.audio_url);
+    
+    const audioFile = new File([audioBlob], 'recording.webm', { 
+      type: 'audio/webm;codecs=opus' 
+    });
+    
+    console.log('Audio file size:', audioFile.size, 'bytes');
     
     const transcription = await groq.audio.transcriptions.create({
       file: audioFile,

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Pause, Square } from "lucide-react";
+import { ChevronLeft, Pause, Square, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
 
@@ -128,6 +128,29 @@ export default function RecordingPage() {
       mediaRecorderRef.current.pause();
       setIsPaused(true);
     }
+  };
+
+  const handleCancel = () => {
+    if (!isRecording) {
+      router.back();
+      return;
+    }
+
+    const confirmed = confirm('Are you sure you want to cancel this recording? It will not be saved.');
+    
+    if (!confirmed) return;
+
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    chunksRef.current = [];
+    localStorage.removeItem('recordingBlob');
+
+    router.back();
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -266,21 +289,39 @@ export default function RecordingPage() {
               {isRecording ? (isPaused ? "Paused" : "Recording...") : "Tap to start"}
             </div>
 
-            {/* Pause Button */}
+            {/* Action Buttons */}
             {isRecording && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePause();
-                }}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50"
-                type="button"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                <Pause className="w-5 h-5" />
-                <span>{isPaused ? "Resume" : "Pause"}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePause();
+                  }}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <Pause className="w-5 h-5" />
+                  <span>{isPaused ? "Resume" : "Pause"}</span>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCancel();
+                  }}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-red-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-red-200"
+                  type="button"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <X className="w-5 h-5" />
+                  <span>Cancel</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

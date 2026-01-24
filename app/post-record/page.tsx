@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock, Calendar, CheckCircle, Save, Loader2 } from "lucide-react";
+import { Clock, Calendar, CheckCircle, Save, Loader2, Trash2, X } from "lucide-react";
 import { Subject } from "../types";
 
 const subjects: Subject[] = [
@@ -21,6 +21,7 @@ export default function PostRecordPage() {
   
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const durationMin = Math.floor(duration / 60);
   const durationSec = duration % 60;
@@ -46,34 +47,26 @@ export default function PostRecordPage() {
     setTranscriptionError(null);
 
     try {
-      // Get audio blob from localStorage (temporary)
-      const audioUrl = localStorage.getItem('recordingBlob');
-      if (!audioUrl) {
-        throw new Error('Audio file not found');
-      }
-
-      // Convert blob URL to File
-      const response = await fetch(audioUrl);
-      const blob = await response.blob();
-      const audioFile = new File([blob], 'recording.webm', { type: 'audio/webm' });
-
-      // Create FormData
-      const formData = new FormData();
-      formData.append('audio', audioFile);
-      formData.append('recordingId', recordingId);
-
-      // Call transcribe API
+      // Call transcribe API with just the recording ID
+      // API will download audio from Supabase storage
       const transcribeResponse = await fetch('/api/transcribe', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recordingId }),
       });
 
       if (!transcribeResponse.ok) {
-        throw new Error('Transcription failed');
+        const errorData = await transcribeResponse.json();
+        throw new Error(errorData.error || 'Transcription failed');
       }
 
       const result = await transcribeResponse.json();
       console.log('Transcription result:', result);
+
+      // Clean up localStorage
+      localStorage.removeItem('recordingBlob');
 
       // Navigate to transcription page
       router.push(`/transcription?recordingId=${recordingId}&subjectId=${subjectId}`);
@@ -85,7 +78,47 @@ export default function PostRecordPage() {
   };
 
   const handleSaveLater = () => {
+    // Clean up localStorage
+    localStorage.removeItem('recordingBlob');
     router.push("/");
+  };
+
+  const handleCancel = async () => {
+    if (!recordingId) {
+      router.push("/");
+      return;
+    }
+
+    const confirmed = confirm(
+      'Are you sure you want to delete this recording? This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setTranscriptionError(null);
+
+    try {
+      // Delete recording from database and storage
+      const response = await fetch(`/api/recordings/${recordingId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete recording');
+      }
+
+      // Clean up localStorage
+      localStorage.removeItem('recordingBlob');
+
+      // Navigate back to home
+      router.push("/");
+    } catch (error) {
+      console.error('Delete error:', error);
+      setTranscriptionError('Failed to delete recording. Please try again.');
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -142,7 +175,7 @@ export default function PostRecordPage() {
             <div className="space-y-3">
               <button
                 onClick={handleTranscribe}
-                disabled={isTranscribing}
+                disabled={isTranscribing || isDeleting}
                 className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl py-4 px-6 shadow-lg shadow-purple-200 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isTranscribing ? (
@@ -160,11 +193,29 @@ export default function PostRecordPage() {
 
               <button
                 onClick={handleSaveLater}
-                disabled={isTranscribing}
+                disabled={isTranscribing || isDeleting}
                 className="w-full bg-white text-gray-700 rounded-2xl py-4 px-6 border-2 border-gray-200 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-5 h-5" />
                 <span className="text-base">Save for Later</span>
+              </button>
+
+              <button
+                onClick={handleCancel}
+                disabled={isTranscribing || isDeleting}
+                className="w-full bg-white text-red-600 rounded-2xl py-4 px-6 border-2 border-red-200 hover:border-red-300 hover:bg-red-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-base">Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-5 h-5" />
+                    <span className="text-base">Cancel & Delete</span>
+                  </>
+                )}
               </button>
             </div>
 
