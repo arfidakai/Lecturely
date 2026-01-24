@@ -1,15 +1,15 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Pause, Square } from "lucide-react";
+import { ChevronLeft, Pause, Square, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
 
 const subjects: Subject[] = [
-  { id: "1", name: "Computer Science", color: "#9b87f5", icon: "💻" },
-  { id: "2", name: "Mathematics", color: "#f59e87", icon: "📐" },
-  { id: "3", name: "Physics", color: "#87d4f5", icon: "⚡" },
-  { id: "4", name: "Literature", color: "#f5c987", icon: "📚" },
+  { id: "11111111-1111-1111-1111-111111111111", name: "Computer Science", color: "#9b87f5", icon: "💻" },
+  { id: "22222222-2222-2222-2222-222222222222", name: "Mathematics", color: "#f59e87", icon: "📐" },
+  { id: "33333333-3333-3333-3333-333333333333", name: "Physics", color: "#87d4f5", icon: "⚡" },
+  { id: "44444444-4444-4444-4444-444444444444", name: "Literature", color: "#f5c987", icon: "📚" },
 ];
 
 export default function RecordingPage() {
@@ -22,6 +22,7 @@ export default function RecordingPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -72,17 +73,45 @@ export default function RecordingPage() {
       if (mediaRecorderRef.current) {
         mediaRecorderRef.current.stop();
         
-        mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current.onstop = async () => {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-          const url = URL.createObjectURL(blob);
-          localStorage.setItem('recordingBlob', url);
           
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
+          const blobUrl = URL.createObjectURL(blob);
+          localStorage.setItem('recordingBlob', blobUrl);
+          
+          console.log('Recording stopped, saving to Supabase...');
+          setIsSaving(true);
+          
+          try {
+            const formData = new FormData();
+            formData.append('audio', blob, 'recording.webm');
+            formData.append('subjectId', subject.id);
+            formData.append('duration', duration.toString());
+            formData.append('title', `${subject.name} - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`);
+
+            const response = await fetch('/api/recordings', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to save recording');
+            }
+
+            const { recording } = await response.json();
+            console.log('Recording saved successfully:', recording);
+            
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            console.log('Navigating to post-record...');
+            router.push(`/post-record?duration=${duration}&subjectId=${subject.id}&recordingId=${recording.id}`);
+          } catch (error) {
+            console.error('Error saving recording:', error);
+            setError('Failed to save recording. Please try again.');
+            setIsSaving(false);
+            setIsRecording(false);
           }
-          
-          console.log('Recording stopped, navigating...');
-          router.push(`/post-record?duration=${duration}&subjectId=${subject.id}`);
         };
       }
     }
@@ -99,6 +128,29 @@ export default function RecordingPage() {
       mediaRecorderRef.current.pause();
       setIsPaused(true);
     }
+  };
+
+  const handleCancel = () => {
+    if (!isRecording) {
+      router.back();
+      return;
+    }
+
+    const confirmed = confirm('Are you sure you want to cancel this recording? It will not be saved.');
+    
+    if (!confirmed) return;
+
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    chunksRef.current = [];
+    localStorage.removeItem('recordingBlob');
+
+    router.back();
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -186,7 +238,8 @@ export default function RecordingPage() {
                   e.stopPropagation();
                   handleStartStop();
                 }}
-                className="relative bg-transparent border-0 p-0 cursor-pointer touch-manipulation"
+                disabled={isSaving}
+                className="relative bg-transparent border-0 p-0 cursor-pointer touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
                 type="button"
               >
@@ -226,25 +279,49 @@ export default function RecordingPage() {
               </div>
             )}
 
+            {isSaving && (
+              <div className="text-sm text-purple-600 mb-4 text-center px-4">
+                Saving recording...
+              </div>
+            )}
+
             <div className="text-sm text-gray-500 mb-8">
               {isRecording ? (isPaused ? "Paused" : "Recording...") : "Tap to start"}
             </div>
 
-            {/* Pause Button */}
+            {/* Action Buttons */}
             {isRecording && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePause();
-                }}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50"
-                type="button"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                <Pause className="w-5 h-5" />
-                <span>{isPaused ? "Resume" : "Pause"}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePause();
+                  }}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <Pause className="w-5 h-5" />
+                  <span>{isPaused ? "Resume" : "Pause"}</span>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCancel();
+                  }}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-red-600 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer z-50 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-red-200"
+                  type="button"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <X className="w-5 h-5" />
+                  <span>Cancel</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

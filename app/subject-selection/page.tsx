@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Plus, X } from "lucide-react";
 import { Subject } from "../types";
 
-const initialSubjects: Subject[] = [
-  { id: "1", name: "Computer Science", color: "#9b87f5", icon: "💻" },
-  { id: "2", name: "Mathematics", color: "#f59e87", icon: "📐" },
-  { id: "3", name: "Physics", color: "#87d4f5", icon: "⚡" },
-  { id: "4", name: "Literature", color: "#f5c987", icon: "📚" },
+const subjects: Subject[] = [
+  { id: "11111111-1111-1111-1111-111111111111", name: "Computer Science", color: "#9b87f5", icon: "💻" },
+  { id: "22222222-2222-2222-2222-222222222222", name: "Mathematics", color: "#f59e87", icon: "📐" },
+  { id: "33333333-3333-3333-3333-333333333333", name: "Physics", color: "#87d4f5", icon: "⚡" },
+  { id: "44444444-4444-4444-4444-444444444444", name: "Literature", color: "#f5c987", icon: "📚" },
 ];
 
 export default function SubjectSelectionPage() {
