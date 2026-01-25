@@ -52,16 +52,34 @@ export default function NotesPage() {
         {!loading && recordings.length === 0 && (
           <div className="text-center text-gray-400 py-8">No recordings found.</div>
         )}
-        <ul className="space-y-4">
+        <ul className="space-y-3">
           {recordings.map((rec) => (
-            <li key={rec.id} className="bg-white rounded-2xl shadow p-4 flex flex-col gap-2 cursor-pointer hover:bg-purple-50 transition" onClick={() => router.push(`/note-detail?recordingId=${rec.id}`)}>
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-lg">{rec.title || "Untitled"}</span>
+            <li
+              key={rec.id}
+              className="bg-white rounded-xl shadow p-3 flex flex-col gap-1 cursor-pointer hover:bg-purple-50 transition relative"
+              onClick={() => router.push(`/note-detail?recordingId=${rec.id}`)}
+            >
+              {/* Badge transcribed */}
+              {rec.transcribed && (
+                <span className="absolute top-2 right-3 bg-purple-100 text-purple-600 text-[11px] px-2 py-0.5 rounded-full font-medium">✓ Transcribed</span>
+              )}
+              {/* Subject name only */}
+              <span className="font-semibold text-base text-gray-900 mb-1 capitalize">
+                {(() => {
+                  // Find subject name from subject_id
+                  const SUBJECTS = [
+                    { id: "11111111-1111-1111-1111-111111111111", name: "Computer Science" },
+                    { id: "22222222-2222-2222-2222-222222222222", name: "Mathematics" },
+                    { id: "33333333-3333-3333-3333-333333333333", name: "Physics" },
+                    { id: "44444444-4444-4444-4444-444444444444", name: "Literature" },
+                  ];
+                  return SUBJECTS.find(s => s.id === rec.subject_id)?.name || "Unknown";
+                })()}
+              </span>
+              {/* Date & duration row */}
+              <div className="flex justify-between items-end w-full mt-1">
                 <span className="text-xs text-gray-400">{new Date(rec.date).toLocaleDateString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs text-gray-500">
-                <span>Duration: {Math.floor(rec.duration/60)}:{(rec.duration%60).toString().padStart(2,"0")}</span>
-                <span>{rec.transcribed ? "Transcribed" : "Not transcribed"}</span>
+                <span className="text-xs text-gray-700 font-semibold">{Math.floor(rec.duration/60)}:{(rec.duration%60).toString().padStart(2,"0")}</span>
               </div>
             </li>
           ))}

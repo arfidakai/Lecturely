@@ -12,6 +12,7 @@ export type Recording = {
   date: string;
   duration: number;
   transcribed: boolean;
+  title?: string;
   transcription?: TranscriptionSegment[];
   summary?: string;
 };

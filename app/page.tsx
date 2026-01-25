@@ -52,19 +52,23 @@ export default function Home() {
 
       if (error) throw error;
 
+      // console.log("Fetched recordings:", data); // Debug log
+
       // Map database records to Recording type with subject names
       const mappedRecordings: Recording[] = (data || []).map((rec) => {
         const subject = subjects.find((s) => s.id === rec.subject_id);
         return {
           id: rec.id,
           subjectId: rec.subject_id,
-          subjectName: subject?.name || "Unknown",
+          subjectName: subject?.name || "Unknown Subject",
           date: rec.date,
           duration: rec.duration,
           transcribed: rec.transcribed,
+          title: rec.title || "",
         };
       });
 
+      // console.log("Mapped recordings:", mappedRecordings); // Debug log
       setRecordings(mappedRecordings);
     } catch (error) {
       console.error("Error fetching recordings:", error);

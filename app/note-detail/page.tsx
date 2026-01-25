@@ -66,11 +66,15 @@ export default function NoteDetailPage() {
 
       // Fetch transcriptions if transcribed
       if (recordingData.transcribed) {
+        // console.log("Recording is transcribed, fetching transcription data..."); // Debug log
+        
         const { data: transcriptionData, error: transcriptionError } = await supabase
           .from("transcriptions")
           .select("*")
           .eq("recording_id", recordingId)
           .order("timestamp", { ascending: true });
+
+        // console.log("Transcription data:", transcriptionData, "Error:", transcriptionError); // Debug log
 
         if (!transcriptionError && transcriptionData) {
           setTranscriptions(transcriptionData);
@@ -82,6 +86,8 @@ export default function NoteDetailPage() {
           .select("*")
           .eq("recording_id", recordingId)
           .maybeSingle();
+
+        // console.log("Summary data:", summaryData, "Error:", summaryError); // Debug log
 
         if (!summaryError && summaryData) {
           setSummary(summaryData);
@@ -221,6 +227,13 @@ export default function NoteDetailPage() {
   }
 
   const fullTranscriptionText = transcriptions.map((t) => t.text).join(" ");
+  
+  // console.log("Component state:", { 
+  //   recordingTranscribed: recording?.transcribed,
+  //   transcriptionsLength: transcriptions.length,
+  //   hasSummary: !!summary,
+  //   fullText: fullTranscriptionText.slice(0, 100) + "..."
+  // }); // Debug log
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-100 to-white pb-8">
@@ -308,50 +321,89 @@ export default function NoteDetailPage() {
           )}
 
           {/* Transcription */}
-          {recording.transcribed && transcriptions.length > 0 && (
-            <div className="bg-white rounded-3xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Transcription</h2>
-                {!summary && (
+          {recording.transcribed && (
+            <div className="space-y-4">
+              {transcriptions.length > 0 ? (
+                <>
+                  {/* Transcription Card - Clickable */}
                   <button
-                    onClick={handleGenerateSummary}
-                    disabled={isGeneratingSummary}
-                    className="flex items-center gap-2 text-purple-600 hover:text-purple-700 text-sm disabled:opacity-50"
+                    onClick={() => router.push(`/transcription?recordingId=${recordingId}&subjectId=${recording.subject_id}`)}
+                    className="w-full bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
                   >
-                    {isGeneratingSummary ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Generate Summary</span>
-                      </>
-                    )}
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-gray-900">Transcription</h2>
+                      <div className="text-purple-600 text-sm">View →</div>
+                    </div>
+                    <div className="prose prose-sm max-w-none">
+                      <p className="text-gray-700 leading-relaxed line-clamp-3">
+                        {fullTranscriptionText}
+                      </p>
+                    </div>
                   </button>
-                )}
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {fullTranscriptionText}
-                </p>
-              </div>
-            </div>
-          )}
 
-          {/* Summary */}
-          {summary && (
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl p-6 shadow-sm border border-purple-100">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold text-gray-900">AI Summary</h2>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {summary.content}
-                </p>
-              </div>
+                  {/* Summary Card - Clickable or Generate */}
+                  {summary ? (
+                    <button
+                      onClick={() => router.push(`/ai-summary?recordingId=${recordingId}&subjectId=${recording.subject_id}`)}
+                      className="w-full bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left border border-purple-100"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-purple-600" />
+                          <h2 className="text-lg font-semibold text-gray-900">AI Summary</h2>
+                        </div>
+                        <div className="text-purple-600 text-sm">View →</div>
+                      </div>
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-gray-700 leading-relaxed line-clamp-3">
+                          {summary.content}
+                        </p>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl p-6 shadow-sm border border-purple-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-purple-600" />
+                          <h2 className="text-lg font-semibold text-gray-900">AI Summary</h2>
+                        </div>
+                      </div>
+                      <p className="text-gray-500 text-sm mb-4">Generate an AI summary of this transcription</p>
+                      <button
+                        onClick={handleGenerateSummary}
+                        disabled={isGeneratingSummary}
+                        className="w-full bg-purple-600 text-white py-3 px-4 rounded-2xl hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isGeneratingSummary ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Generating Summary...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>Generate Summary</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-white rounded-3xl p-6 shadow-sm">
+                  <div className="text-center">
+                    <div className="text-4xl mb-4">📝</div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Transcription Available</h2>
+                    <p className="text-gray-500 mb-4">Click to view the transcription content</p>
+                    <button
+                      onClick={() => router.push(`/transcription?recordingId=${recordingId}&subjectId=${recording.subject_id}`)}
+                      className="bg-purple-600 text-white px-6 py-3 rounded-2xl hover:bg-purple-700 transition-colors"
+                    >
+                      View Transcription
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
