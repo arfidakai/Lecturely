@@ -3,13 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Clock, Calendar, CheckCircle, Save, Loader2, Trash2, X } from "lucide-react";
 import { Subject } from "../types";
-
-const subjects: Subject[] = [
-  { id: "11111111-1111-1111-1111-111111111111", name: "Computer Science", color: "#9b87f5", icon: "💻" },
-  { id: "22222222-2222-2222-2222-222222222222", name: "Mathematics", color: "#f59e87", icon: "📐" },
-  { id: "33333333-3333-3333-3333-333333333333", name: "Physics", color: "#87d4f5", icon: "⚡" },
-  { id: "44444444-4444-4444-4444-444444444444", name: "Literature", color: "#f5c987", icon: "📚" },
-];
+import { supabase } from "../lib/supabase";
 
 export default function PostRecordPage() {
   const router = useRouter();
@@ -17,11 +11,29 @@ export default function PostRecordPage() {
   const duration = parseInt(searchParams.get("duration") || "0");
   const subjectId = searchParams.get("subjectId");
   const recordingId = searchParams.get("recordingId");
-  const subject = subjects.find((s) => s.id === subjectId) || subjects[0];
+  const [subject, setSubject] = useState<Subject | null>(null);
   
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (subjectId) {
+      fetchSubject();
+    }
+  }, [subjectId]);
+
+  const fetchSubject = async () => {
+    if (!subjectId) return;
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("id, name, color, icon")
+      .eq("id", subjectId)
+      .single();
+    if (!error && data) {
+      setSubject(data);
+    }
+  };
 
   const durationMin = Math.floor(duration / 60);
   const durationSec = duration % 60;
@@ -64,10 +76,8 @@ export default function PostRecordPage() {
       const result = await transcribeResponse.json();
       console.log('Transcription result:', result);
 
-      localStorage.removeItem('recordingBlob');
-
       // Navigate to transcription page
-      router.push(`/transcription?recordingId=${recordingId}&subjectId=${subjectId}`);
+      router.push(`/transcription/${recordingId}/${subjectId}`);
     } catch (error) {
       console.error('Transcription error:', error);
       setTranscriptionError('Failed to transcribe audio. Please try again.');
@@ -116,6 +126,15 @@ export default function PostRecordPage() {
       setIsDeleting(false);
     }
   };
+
+  if (!subject) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
+        <Loader2 className="w-10 h-10 text-purple-500 animate-spin mr-3" />
+        <span className="text-gray-500 text-lg">Loading subject...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">

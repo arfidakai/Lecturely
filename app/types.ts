@@ -3,6 +3,7 @@ export type Subject = {
   name: string;
   color: string;
   icon: string;
+  lecturer?: string;
 };
 
 export type Recording = {
@@ -12,6 +13,7 @@ export type Recording = {
   date: string;
   duration: number;
   transcribed: boolean;
+  title?: string;
   transcription?: TranscriptionSegment[];
   summary?: string;
 };

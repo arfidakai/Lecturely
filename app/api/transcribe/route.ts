@@ -35,11 +35,21 @@ export async function POST(request: NextRequest) {
     console.log('Downloading audio from storage:', recording.audio_url);
     const audioBlob = await storageService.downloadAudio(recording.audio_url);
     
+    console.log('Audio blob size:', audioBlob.size, 'bytes');
+    
+    // Validasi: audio minimal 1KB
+    if (audioBlob.size < 1000) {
+      return NextResponse.json(
+        { error: 'Audio file is too small or corrupted. Please record again.' },
+        { status: 400 }
+      );
+    }
+    
     const audioFile = new File([audioBlob], 'recording.webm', { 
       type: 'audio/webm;codecs=opus' 
     });
     
-    console.log('Audio file size:', audioFile.size, 'bytes');
+    console.log('Audio file created. Size:', audioFile.size, 'bytes');
     
     const transcription = await groq.audio.transcriptions.create({
       file: audioFile,
