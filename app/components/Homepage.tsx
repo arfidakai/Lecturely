@@ -115,7 +115,7 @@ export default function Homepage({
             return (
               <button
                 key={recording.id}
-                onClick={() => router.push(`/transcription?recordingId=${recording.id}&subjectId=${recording.subjectId}`)}
+                onClick={() => router.push(`/transcription/${recording.id}/${recording.subjectId}`)}
                 className="w-full bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
               >
                 <div className="flex items-start gap-3">

@@ -76,10 +76,8 @@ export default function PostRecordPage() {
       const result = await transcribeResponse.json();
       console.log('Transcription result:', result);
 
-      localStorage.removeItem('recordingBlob');
-
       // Navigate to transcription page
-      router.push(`/transcription?recordingId=${recordingId}&subjectId=${subjectId}`);
+      router.push(`/transcription/${recordingId}/${subjectId}`);
     } catch (error) {
       console.error('Transcription error:', error);
       setTranscriptionError('Failed to transcribe audio. Please try again.');

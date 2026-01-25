@@ -112,7 +112,7 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
             <li
               key={rec.id}
               className="bg-white rounded-2xl shadow-sm hover:shadow-md p-4 flex flex-col gap-2 cursor-pointer transition-all active:scale-[0.98]"
-              onClick={() => router.push(`/transcription?recordingId=${rec.id}&subjectId=${rec.subject_id}`)}
+              onClick={() => router.push(`/transcription/${rec.id}/${rec.subject_id}`)}
             >
               <div className="flex justify-between items-start">
                 <span className="font-semibold text-base text-gray-900 flex-1">

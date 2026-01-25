@@ -66,18 +66,35 @@ export default function RecordingPage() {
       }
       try {
         console.log('Requesting microphone access...');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100
+          } 
+        });
         console.log('Microphone access granted');
         streamRef.current = stream;
         chunksRef.current = [];
-        const mediaRecorder = new MediaRecorder(stream);
+        
+        // Pilih MIME type yang didukung
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm';
+        
+        console.log('Using MIME type:', mimeType);
+        const mediaRecorder = new MediaRecorder(stream, { mimeType });
         mediaRecorderRef.current = mediaRecorder;
+        
         mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
+            console.log('Data chunk received:', e.data.size, 'bytes');
             chunksRef.current.push(e.data);
           }
         };
-        mediaRecorder.start();
+        
+        // Start dengan timeslice 100ms untuk capture data lebih konsisten
+        mediaRecorder.start(100);
         setIsRecording(true);
         setError(null);
         console.log('Recording started');
@@ -94,10 +111,32 @@ export default function RecordingPage() {
         mediaRecorderRef.current.onstop = async () => {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
           
-          const blobUrl = URL.createObjectURL(blob);
-          localStorage.setItem('recordingBlob', blobUrl);
+          console.log('Recording stopped. Blob size:', blob.size, 'bytes');
+          console.log('Recording duration:', duration, 'seconds');
           
-          console.log('Recording stopped, saving to Supabase...');
+          // Validasi: blob harus ada dan minimal 1KB
+          if (blob.size < 1000) {
+            setError('Audio recording failed or too short. Please try again.');
+            setIsSaving(false);
+            setIsRecording(false);
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            return;
+          }
+          
+          // Validasi: durasi minimal 1 detik
+          if (duration < 1) {
+            setError('Recording too short. Please record at least 1 second.');
+            setIsSaving(false);
+            setIsRecording(false);
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            return;
+          }
+          
+          console.log('Recording valid, saving to Supabase...');
           setIsSaving(true);
           
           try {
@@ -172,7 +211,6 @@ export default function RecordingPage() {
     }
 
     chunksRef.current = [];
-    localStorage.removeItem('recordingBlob');
 
     router.back();
   };

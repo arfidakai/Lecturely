@@ -327,7 +327,7 @@ export default function NoteDetailPage() {
                 <>
                   {/* Transcription Card - Clickable */}
                   <button
-                    onClick={() => router.push(`/transcription?recordingId=${recordingId}&subjectId=${recording.subject_id}`)}
+                    onClick={() => router.push(`/transcription/${recordingId}/${recording.subject_id}`)}
                     className="w-full bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -396,7 +396,7 @@ export default function NoteDetailPage() {
                     <h2 className="text-lg font-semibold text-gray-900 mb-2">Transcription Available</h2>
                     <p className="text-gray-500 mb-4">Click to view the transcription content</p>
                     <button
-                      onClick={() => router.push(`/transcription?recordingId=${recordingId}&subjectId=${recording.subject_id}`)}
+                      onClick={() => router.push(`/transcription/${recordingId}/${recording.subject_id}`)}
                       className="bg-purple-600 text-white px-6 py-3 rounded-2xl hover:bg-purple-700 transition-colors"
                     >
                       View Transcription
