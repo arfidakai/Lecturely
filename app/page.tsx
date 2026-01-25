@@ -38,7 +38,7 @@ export default function Home() {
   const fetchSubjects = async () => {
     const { data, error } = await supabase
       .from("subjects")
-      .select("id, name, color, icon")
+      .select("id, name, color, icon, schedule_days")
       .order("created_at", { ascending: true });
     if (!error && data) {
       setSubjects(data);

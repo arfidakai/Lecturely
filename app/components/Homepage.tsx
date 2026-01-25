@@ -27,7 +27,15 @@ export default function Homepage({
   });
 
   const recentRecordings = recordings.slice(0, 3);
+function getTodayDayName(): string {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return days[new Date().getDay()];
+}
 
+function filterSubjectsByToday(subjects: Subject[]): Subject[] {
+  const today = getTodayDayName();
+  return subjects.filter(subj => Array.isArray(subj.schedule_days) && subj.schedule_days.includes(today));
+}
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
       {/* Header */}
@@ -64,7 +72,7 @@ export default function Homepage({
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {subjects.slice(0, 4).map((subject) => {
+          {filterSubjectsByToday(subjects).slice(0, 4).map((subject) => {
             const subjectSlug = getSlugFromUUID(subject.id) || subject.id;
             return (
               <button

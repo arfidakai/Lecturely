@@ -4,6 +4,7 @@ export type Subject = {
   color: string;
   icon: string;
   lecturer?: string;
+  schedule_days?: string[]; 
 };
 
 export type Recording = {
