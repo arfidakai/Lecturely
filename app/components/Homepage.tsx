@@ -57,7 +57,7 @@ export default function Homepage({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg text-gray-900">Today's Subjects</h2>
           <button
-            onClick={onNavigateToSubjects}
+            onClick={() => router.push('/all-subjects')}
             className="text-sm text-purple-500"
           >
             See All

@@ -82,8 +82,8 @@ export default function SubjectSelectionPage() {
           </div>
 
           {/* Subjects List */}
-          <div className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="space-y-3">
+          <div className="flex-1 overflow-y-auto px-6 py-6 relative">
+            <div className="space-y-3 pb-20">
               {loading ? (
                 <div className="text-center text-gray-400 py-8">Loading subjects...</div>
               ) : subjects.length === 0 ? (
@@ -116,6 +116,15 @@ export default function SubjectSelectionPage() {
                 </button>
               ))}
             </div>
+            {/* Floating Plus Button */}
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="fixed bottom-8 right-8 md:bottom-12 md:right-12 bg-purple-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:bg-purple-600 transition-colors z-20"
+              style={{ boxShadow: '0 4px 24px 0 rgba(155, 135, 245, 0.15)' }}
+              aria-label="Add Subject"
+            >
+              <Plus className="w-8 h-8" />
+            </button>
           </div>
 
           {/* Floating Add Button */}

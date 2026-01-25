@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { getUUIDFromSlug } from "../../lib/subjectMapping";
+function isUUID(str: string) {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+}
 import { ChevronLeft, Mic } from "lucide-react";
 
 interface Recording {
@@ -32,8 +35,21 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
       setLoading(true);
       setError(null);
 
-      const subjectId = getUUIDFromSlug(subjectSlug);
-      
+
+      let subjectId = "";
+      if (isUUID(subjectSlug)) {
+        subjectId = subjectSlug;
+      } else {
+        const uuid = getUUIDFromSlug(subjectSlug);
+        if (uuid) {
+          subjectId = uuid;
+        } else {
+          setError("Subject not found");
+          setLoading(false);
+          return;
+        }
+      }
+
       if (!subjectId) {
         setError("Subject not found");
         setLoading(false);
@@ -58,12 +74,14 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
   }, [subjectSlug]);
 
   const getSubjectName = (slug: string) => {
+    // TODO: Optionally fetch subject name from DB if UUID
     const names: Record<string, string> = {
       'computer-science': 'Computer Science',
       'mathematics': 'Mathematics',
       'physics': 'Physics',
       'literature': 'Literature',
     };
+    if (isUUID(slug)) return '';
     return names[slug] || slug;
   };
 
@@ -116,7 +134,7 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
             >
               <div className="flex justify-between items-start">
                 <span className="font-semibold text-base text-gray-900 flex-1">
-                  {getSubjectName(subjectSlug)}
+                  {rec.title && rec.title.trim() ? rec.title : getSubjectName(subjectSlug)}
                 </span>
                 {rec.transcribed && (
                   <span className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full ml-2">
