@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, Loader2, Sparkles, Download, Share2, Trash2 } from "lucide-react";
 
 export default function TranscriptionPage() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export default function TranscriptionPage() {
   const [transcription, setTranscription] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!recordingId) {
@@ -28,7 +29,14 @@ export default function TranscriptionPage() {
     try {
       const response = await fetch(`/api/transcriptions/${recordingId}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch transcription');
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404) {
+          setError(errorData.error || 'Transcription not found');
+        } else {
+          setError(errorData.error || 'Failed to fetch transcription');
+        }
+        setTranscription("");
+        return;
       }
 
       const data = await response.json();
@@ -45,9 +53,66 @@ export default function TranscriptionPage() {
     router.push(`/ai-summary?recordingId=${recordingId}&subjectId=${subjectId}`);
   };
 
-  const handleSegmentClick = (segmentId: string) => {
-    setPlayingSegment(playingSegment === segmentId ? null : segmentId);
+  const handleShare = () => {
+    if (navigator.share && transcription) {
+      navigator.share({
+        title: 'Transcription',
+        text: transcription,
+      }).catch(console.error);
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(transcription).then(() => {
+        alert('Transcription copied to clipboard!');
+      }).catch(() => {
+        alert('Failed to copy transcription');
+      });
+    }
   };
+
+  const handleDownload = () => {
+    if (!transcription) return;
+    
+    const content = `Transcription\n\nDate: ${new Date().toLocaleDateString()}\n\n${transcription}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcription-${recordingId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDelete = async () => {
+    if (!recordingId) return;
+
+    const confirmed = confirm(
+      'Are you sure you want to delete this recording? This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`/api/recordings/${recordingId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete recording');
+      }
+
+      router.push('/');
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete recording. Please try again.');
+      setIsDeleting(false);
+    }
+  };
+
+
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
@@ -71,14 +136,31 @@ export default function TranscriptionPage() {
                   })}
                 </p>
               </div>
-              {!isLoading && !error && (
+              {/* Action buttons */}
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={handleGenerateSummary}
-                  className="p-2.5 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 transition-colors active:scale-95"
+                  onClick={handleShare}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
+                  title="Share"
                 >
-                  <Sparkles className="w-5 h-5" />
+                  <Share2 className="w-5 h-5 text-gray-700" />
                 </button>
-              )}
+                <button
+                  onClick={handleDownload}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
+                  title="Download"
+                >
+                  <Download className="w-5 h-5 text-gray-700" />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="p-2 hover:bg-red-50 rounded-full transition-colors active:scale-95 disabled:opacity-50"
+                  title="Delete"
+                >
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -94,6 +176,9 @@ export default function TranscriptionPage() {
                 <div className="text-red-500 mb-4 text-center">
                   <p className="font-medium">Error</p>
                   <p className="text-sm">{error}</p>
+                  {error === 'No transcription found' && (
+                    <p className="text-xs text-gray-500 mt-2">Belum ada transkripsi untuk rekaman ini.<br />Silakan generate atau tunggu proses transkripsi.</p>
+                  )}
                 </div>
                 <button
                   onClick={() => router.back()}
@@ -110,6 +195,19 @@ export default function TranscriptionPage() {
               </div>
             )}
           </div>
+
+          {/* Generate Summary Button */}
+          {!isLoading && !error && (
+            <div className="px-6 pb-6">
+              <button
+                onClick={handleGenerateSummary}
+                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-4 px-6 rounded-2xl hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+              >
+                <Sparkles className="w-5 h-5" />
+                <span className="font-medium">Generate AI Summary</span>
+              </button>
+            </div>
+          )}
 
           {/* Info Banner */}
           {!isLoading && !error && (

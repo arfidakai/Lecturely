@@ -3,6 +3,7 @@ export type Subject = {
   name: string;
   color: string;
   icon: string;
+  lecturer?: string;
 };
 
 export type Recording = {

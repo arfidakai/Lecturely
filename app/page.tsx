@@ -5,29 +5,23 @@ import Dashboard from "./components/Homepage";
 import { Subject, Recording } from "./types";
 import { supabase } from "./lib/supabase";
 
-const subjects: Subject[] = [
-  { id: "11111111-1111-1111-1111-111111111111", name: "Computer Science", color: "#9b87f5", icon: "💻" },
-  { id: "22222222-2222-2222-2222-222222222222", name: "Mathematics", color: "#f59e87", icon: "📐" },
-  { id: "33333333-3333-3333-3333-333333333333", name: "Physics", color: "#87d4f5", icon: "⚡" },
-  { id: "44444444-4444-4444-4444-444444444444", name: "Literature", color: "#f5c987", icon: "📚" },
-];
-
 export default function Home() {
   const router = useRouter();
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    fetchSubjects();
     fetchRecordings();
 
-    // Refresh recordings when page becomes visible (user returns to homepage)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        fetchSubjects();
         fetchRecordings();
       }
     };
 
-    // Refresh recordings when custom event is triggered (after save/delete)
     const handleRefreshRecordings = () => {
       fetchRecordings();
     };
@@ -40,6 +34,16 @@ export default function Home() {
       window.removeEventListener("refreshRecordings", handleRefreshRecordings);
     };
   }, []);
+
+  const fetchSubjects = async () => {
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("id, name, color, icon")
+      .order("created_at", { ascending: true });
+    if (!error && data) {
+      setSubjects(data);
+    }
+  };
 
   const fetchRecordings = async () => {
     try {

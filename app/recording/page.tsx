@@ -4,29 +4,43 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Pause, Square, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
-
-const subjects: Subject[] = [
-  { id: "11111111-1111-1111-1111-111111111111", name: "Computer Science", color: "#9b87f5", icon: "💻" },
-  { id: "22222222-2222-2222-2222-222222222222", name: "Mathematics", color: "#f59e87", icon: "📐" },
-  { id: "33333333-3333-3333-3333-333333333333", name: "Physics", color: "#87d4f5", icon: "⚡" },
-  { id: "44444444-4444-4444-4444-444444444444", name: "Literature", color: "#f5c987", icon: "📚" },
-];
+import { supabase } from "../lib/supabase";
 
 export default function RecordingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId");
-  const subject = subjects.find((s) => s.id === subjectId) || subjects[0];
+  const [subject, setSubject] = useState<Subject | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [title, setTitle] = useState("");
+  const [titleTouched, setTitleTouched] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (subjectId) {
+      fetchSubject();
+    }
+  }, [subjectId]);
+
+  const fetchSubject = async () => {
+    if (!subjectId) return;
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("id, name, color, icon")
+      .eq("id", subjectId)
+      .single();
+    if (!error && data) {
+      setSubject(data);
+    }
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -40,25 +54,29 @@ export default function RecordingPage() {
 
   const handleStartStop = async () => {
     console.log('Button clicked!', { isRecording });
-    
     if (!isRecording) {
+      setTitleTouched(true);
+      if (!title.trim()) {
+        setError('Judul/materi harus diisi sebelum mulai rekaman');
+        return;
+      }
+      if (!subject) {
+        setError('Subject belum dimuat. Silakan coba lagi.');
+        return;
+      }
       try {
         console.log('Requesting microphone access...');
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log('Microphone access granted');
-        
         streamRef.current = stream;
         chunksRef.current = [];
-
         const mediaRecorder = new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
-
         mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
             chunksRef.current.push(e.data);
           }
         };
-
         mediaRecorder.start();
         setIsRecording(true);
         setError(null);
@@ -85,9 +103,15 @@ export default function RecordingPage() {
           try {
             const formData = new FormData();
             formData.append('audio', blob, 'recording.webm');
+            if (!subject) {
+              setError('Subject belum dimuat. Silakan coba lagi.');
+              setIsSaving(false);
+              setIsRecording(false);
+              return;
+            }
             formData.append('subjectId', subject.id);
             formData.append('duration', duration.toString());
-            formData.append('title', `${subject.name} - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`);
+            formData.append('title', title.trim());
 
             const response = await fetch('/api/recordings', {
               method: 'POST',
@@ -199,6 +223,27 @@ export default function RecordingPage() {
 
           {/* Recording Visual */}
           <div className="flex-1 flex flex-col items-center justify-center px-6">
+            {/* Input Judul/Materi */}
+            {!isRecording && (
+              <div className="w-full max-w-md mb-8">
+                <label htmlFor="judul" className="block text-sm font-medium text-gray-700 mb-2">Judul/Materi Perkuliahan</label>
+                <input
+                  id="judul"
+                  type="text"
+                  value={title}
+                  onChange={e => { setTitle(e.target.value); setError(null); }}
+                  onBlur={() => setTitleTouched(true)}
+                  className={`w-full px-4 py-3 rounded-xl border ${titleTouched && !title.trim() ? 'border-red-400' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-900 text-base bg-white shadow-sm`}
+                  placeholder="Contoh: Algoritma Sorting, Limit Tak Hingga, dll"
+                  disabled={isRecording || isSaving}
+                  autoFocus
+                />
+                {titleTouched && !title.trim() && (
+                  <div className="text-xs text-red-500 mt-2">Judul/materi wajib diisi</div>
+                )}
+              </div>
+            )}
+
             {/* Timer */}
             <div className="text-5xl text-gray-900 mb-16 tabular-nums">
               {formatTime(duration)}
@@ -238,7 +283,7 @@ export default function RecordingPage() {
                   e.stopPropagation();
                   handleStartStop();
                 }}
-                disabled={isSaving}
+                disabled={isSaving || (!isRecording && !title.trim())}
                 className="relative bg-transparent border-0 p-0 cursor-pointer touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
                 type="button"
@@ -286,7 +331,7 @@ export default function RecordingPage() {
             )}
 
             <div className="text-sm text-gray-500 mb-8">
-              {isRecording ? (isPaused ? "Paused" : "Recording...") : "Tap to start"}
+              {isRecording ? (isPaused ? "Paused" : "Recording...") : "Isi judul materi lalu tap untuk mulai"}
             </div>
 
             {/* Action Buttons */}
