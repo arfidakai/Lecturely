@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Bell, CheckCircle } from "lucide-react";
 import { Recording } from "../types";
@@ -13,7 +13,7 @@ const sampleRecording: Recording = {
   transcribed: true,
 };
 
-export default function ReminderPage() {
+function ReminderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recordingId = searchParams.get("recordingId");
@@ -138,5 +138,13 @@ export default function ReminderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ReminderPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><Bell className="w-12 h-12 text-purple-500 animate-pulse" /></div>}>
+      <ReminderContent />
+    </Suspense>
   );
 }

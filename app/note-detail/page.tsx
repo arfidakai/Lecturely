@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Trash2, Download, Share2, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -26,7 +26,7 @@ interface Summary {
   content: string;
 }
 
-export default function NoteDetailPage() {
+function NoteDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recordingId = searchParams.get("recordingId");
@@ -409,5 +409,17 @@ export default function NoteDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NoteDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
+        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+      </div>
+    }>
+      <NoteDetailContent />
+    </Suspense>
   );
 }

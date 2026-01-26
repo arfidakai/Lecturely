@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Loader2, Download, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 
-export default function AISummaryPage() {
+function AISummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recordingId = searchParams.get("recordingId");
@@ -186,5 +186,17 @@ export default function AISummaryPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AISummaryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
+        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+      </div>
+    }>
+      <AISummaryContent />
+    </Suspense>
   );
 }
