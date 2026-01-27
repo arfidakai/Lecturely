@@ -1,5 +1,5 @@
 "use client";
-import { Mic, BookOpen, Clock } from "lucide-react";
+import { Mic, BookOpen, Clock, Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Subject, Recording } from "../types";
 import { getSlugFromUUID } from "../lib/subjectMapping";
@@ -44,6 +44,14 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
         <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
         <p className="text-gray-500">Ready to record knowledge?</p>
         
+        {/* My Reminders Link */}
+        <button
+          onClick={() => router.push('/my-reminders')}
+          className="mt-4 flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors"
+        >
+          <Bell className="w-4 h-4" />
+          <span>My Reminders</span>
+        </button>
       </div>
     
 
