@@ -1,3 +1,11 @@
+// Cleaning transcript: hapus pengulangan kata/kalimat tidak penting lebih dari 2x
+function cleanTranscript(text: string): string {
+  return text
+    .replace(/(terima kasih[.!?]?\s*){3,}/gi, 'Terima kasih. ')
+    .replace(/(iya[.!?]?\s*){3,}/gi, 'Iya. ')
+    .replace(/(oke[.!?]?\s*){3,}/gi, 'Oke. ');
+}
+
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { transcriptionService } from '../../services/transcriptionService';
@@ -6,6 +14,16 @@ import { summaryService } from '../../services/summaryService';
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
+
+// Fungsi chunking sederhana (berbasis kata)
+function chunkText(text: string, maxWords: number = 1500): string[] {
+  const words = text.split(" ");
+  const chunks: string[] = [];
+  for (let i = 0; i < words.length; i += maxWords) {
+    chunks.push(words.slice(i, i + maxWords).join(" "));
+  }
+  return chunks;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +38,6 @@ export async function POST(request: NextRequest) {
 
     console.log('Generating summary for recording:', recordingId);
 
-    // Check if summary already exists
     const existingSummary = await summaryService.getSummaryByRecording(recordingId);
     if (existingSummary) {
       return NextResponse.json({
@@ -30,7 +47,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get transcription text
     const transcriptions = await transcriptionService.getTranscriptionsByRecording(recordingId);
     
     if (!transcriptions || transcriptions.length === 0) {
@@ -40,41 +56,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fullText = transcriptions.map(t => t.text).join('\n\n');
 
-    // Generate summary using Groq
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', // Fast and FREE!
-      messages: [
-        {
-          role: 'system',
-          content: `Kamu adalah asisten yang membantu meringkas catatan kuliah. 
-Buatlah ringkasan yang:
-1. Mencakup poin-poin utama
-2. Mudah dipahami
-3. Terstruktur dengan baik (gunakan bullet points atau numbering)
-4. Fokus pada konsep penting dan definisi
-5. Dalam bahasa Indonesia yang baik
+    // Cleaning transcript sebelum summary
+    const rawText = transcriptions.map(t => t.text).join('\n\n');
+    const fullText = cleanTranscript(rawText);
 
-Format output dengan Markdown (gunakan **, *, -, dll untuk formatting).`
-        },
-        {
-          role: 'user',
-          content: `Ringkas catatan kuliah berikut:\n\n${fullText}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1024,
-    });
+    // CHUNKING: Bagi teks jika terlalu panjang
+    const chunks = chunkText(fullText, 1500); // 1500 kata per chunk
+    const summaries: string[] = [];
 
-    const summaryContent = completion.choices[0]?.message?.content || 'Tidak dapat membuat ringkasan';
+    for (const chunk of chunks) {
+      try {
+        const completion = await groq.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: `Kamu adalah asisten yang membantu meringkas catatan kuliah. \nBuatlah ringkasan yang:\n1. Mencakup poin-poin utama\n2. Mudah dipahami\n3. Terstruktur dengan baik (gunakan bullet points atau numbering)\n4. Fokus pada konsep penting dan definisi\n5. Dalam bahasa Indonesia yang baik\n\nFormat output dengan Markdown (gunakan **, *, -, dll untuk formatting).`
+            },
+            {
+              role: 'user',
+              content: `Ringkas catatan kuliah berikut:\n\n${chunk}`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1024,
+        });
+        const summaryContent = completion.choices[0]?.message?.content || '';
+        summaries.push(summaryContent);
+      } catch (err: any) {
+        // Error handling: jika error pada salah satu chunk, hentikan dan beri pesan user-friendly
+        console.error('Error generating summary chunk:', err);
+        return NextResponse.json(
+          {
+            error: 'Gagal membuat summary untuk salah satu bagian. Coba rekaman lebih singkat atau ulangi beberapa saat lagi.',
+            details: err.message,
+          },
+          { status: 500 }
+        );
+      }
+    }
 
-    console.log('Summary generated:', summaryContent.substring(0, 100) + '...');
+    // Gabungkan semua summary
+    const finalSummary = summaries.join("\n\n");
 
-    // Save summary to database
+    console.log('Summary generated:', finalSummary.substring(0, 100) + '...');
+
     const summary = await summaryService.createSummary({
       recordingId,
-      content: summaryContent,
+      content: finalSummary,
     });
 
     return NextResponse.json({
