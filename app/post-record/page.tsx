@@ -1,11 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Clock, Calendar, CheckCircle, Save, Loader2, Trash2, X } from "lucide-react";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
 
-export default function PostRecordPage() {
+function PostRecordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const duration = parseInt(searchParams.get("duration") || "0");
@@ -250,5 +250,13 @@ export default function PostRecordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PostRecordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><Loader2 className="w-12 h-12 text-purple-500 animate-spin" /></div>}>
+      <PostRecordContent />
+    </Suspense>
   );
 }

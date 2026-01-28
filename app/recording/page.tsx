@@ -1,12 +1,12 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Pause, Square, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
 
-export default function RecordingPage() {
+function RecordingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId");
@@ -410,5 +410,13 @@ export default function RecordingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RecordingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><div className="animate-pulse text-gray-500">Loading...</div></div>}>
+      <RecordingContent />
+    </Suspense>
   );
 }

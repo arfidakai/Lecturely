@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
@@ -12,7 +12,7 @@ interface Recording {
   transcribed: boolean;
 }
 
-export default function NotesPage() {
+function NotesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId");
@@ -77,5 +77,13 @@ export default function NotesPage() {
         </ul>
       </div>
     </div>
+  );
+}
+
+export default function NotesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><div className="text-center py-8">Loading...</div></div>}>
+      <NotesContent />
+    </Suspense>
   );
 }
