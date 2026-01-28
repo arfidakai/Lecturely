@@ -59,6 +59,8 @@ export default function PostRecordPage() {
     setTranscriptionError(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); 
       
       const transcribeResponse = await fetch('/api/transcribe', {
         method: 'POST',
@@ -66,7 +68,10 @@ export default function PostRecordPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ recordingId }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!transcribeResponse.ok) {
         const errorData = await transcribeResponse.json();
@@ -78,9 +83,13 @@ export default function PostRecordPage() {
 
       // Navigate to transcription page
       router.push(`/transcription/${recordingId}/${subjectId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Transcription error:', error);
-      setTranscriptionError('Failed to transcribe audio. Please try again.');
+      if (error.name === 'AbortError') {
+        setTranscriptionError('Transcription timeout. Recording might be too long. Please try a shorter recording.');
+      } else {
+        setTranscriptionError(error.message || 'Failed to transcribe audio. Please try again.');
+      }
       setIsTranscribing(false);
     }
   };

@@ -5,6 +5,8 @@ import { recordingService } from '../../services/recordingService-server';
 import { storageService } from '../../services/storageService';
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
+export const maxDuration = 300;
+
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
@@ -51,6 +53,7 @@ export async function POST(request: NextRequest) {
     
     console.log('Audio file created. Size:', audioFile.size, 'bytes');
     
+    console.log('Sending to Groq Whisper API...');
     const transcription = await groq.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-large-v3-turbo', 
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
       response_format: 'json',
     });
 
-    console.log('Transcription completed:', transcription.text);
+    console.log('Transcription completed. Text length:', transcription.text.length);
 
     const transcriptionData = await transcriptionService.createTranscription({
       recordingId,
@@ -87,9 +90,19 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error in /api/transcribe:', error);
+    
+    let errorMessage = 'Failed to transcribe audio';
+    if (error.message?.includes('file size')) {
+      errorMessage = 'Audio file is too large. Please try a shorter recording (max 25MB).';
+    } else if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+      errorMessage = 'Transcription timeout. Recording might be too long. Try a shorter recording.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json(
       { 
-        error: 'Failed to transcribe audio',
+        error: errorMessage,
         details: error.message 
       },
       { status: 500 }
