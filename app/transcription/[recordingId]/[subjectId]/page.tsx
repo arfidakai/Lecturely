@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
-import { ChevronLeft, Loader2, Sparkles, Download, Share2, Trash2 } from "lucide-react";
+import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2 } from "lucide-react";
 
 export default function TranscriptionPage() {
   const router = useRouter();
@@ -133,11 +133,11 @@ export default function TranscriptionPage() {
                   <Share2 className="w-5 h-5 text-gray-700" />
                 </button>
                 <button
-                  onClick={handleDownload}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
-                  title="Download"
+                  onClick={() => router.push(`/reminder?recordingId=${recordingId}`)}
+                  className="p-2 hover:bg-purple-50 rounded-full transition-colors active:scale-95"
+                  title="Set Reminder"
                 >
-                  <Download className="w-5 h-5 text-gray-700" />
+                  <Bell className="w-5 h-5 text-purple-600" />
                 </button>
                 <button
                   onClick={handleDelete}
