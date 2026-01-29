@@ -211,8 +211,13 @@ function RecordingContent() {
     }
 
     chunksRef.current = [];
-
-    router.back();
+    
+    setIsRecording(false);
+    setIsPaused(false);
+    setDuration(0);
+    setError(null);
+    setTitle('');
+    setTitleTouched(false);
   };
 
   const formatTime = (totalSeconds: number) => {
