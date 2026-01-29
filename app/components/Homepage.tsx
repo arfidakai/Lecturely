@@ -26,7 +26,7 @@ export default function Homepage({
     day: "numeric",
   });
 
-  const recentRecordings = recordings.slice(0, 3);
+  const recentRecordings = recordings.slice(0, 5);
 function getTodayDayName(): string {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return days[new Date().getDay()];
