@@ -104,7 +104,12 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
           {/* Add Record Button */}
           <button
             onClick={() => {
-              const subjectId = getUUIDFromSlug(subjectSlug);
+              // If subjectSlug is already a UUID, use it directly
+              // Otherwise, convert slug to UUID
+              const subjectId = isUUID(subjectSlug) 
+                ? subjectSlug 
+                : getUUIDFromSlug(subjectSlug);
+              
               if (subjectId) {
                 router.push(`/recording?subjectId=${subjectId}`);
               }
