@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { Subject } from "../types";
-import { ChevronLeft, Plus, X } from "lucide-react";
+import { ChevronLeft, Plus, X, Search } from "lucide-react";
 import { getSlugFromUUID } from "../lib/subjectMapping";
 import Swal from "sweetalert2";
 
@@ -21,6 +21,7 @@ export default function AllSubjectsPage() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [newLecturer, setNewLecturer] = useState("");
@@ -171,6 +172,11 @@ export default function AllSubjectsPage() {
     }
   };
 
+  const filteredSubjects = subjects.filter(subject => 
+    subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (subject.lecturer && subject.lecturer.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-100 to-white py-8 px-4">
       <div className="max-w-md mx-auto w-full">
@@ -191,12 +197,37 @@ export default function AllSubjectsPage() {
             <Plus className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Search Bar */}
+        <div className="relative mb-4">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search subjects or lecturers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
         {/* Subject List */}
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading...</div>
+        ) : filteredSubjects.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 bg-white rounded-2xl shadow-sm">
+            {searchQuery ? 'No subjects found matching your search' : 'No subjects yet'}
+          </div>
         ) : (
           <div className="space-y-3">
-            {subjects.map((subject) => (
+            {filteredSubjects.map((subject) => (
               <div
                 key={subject.id}
                 className="w-full bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-sm hover:shadow-md transition-all border border-purple-100 flex items-center gap-4 relative overflow-hidden"
