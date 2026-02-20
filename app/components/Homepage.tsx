@@ -1,8 +1,10 @@
 "use client";
-import { Mic, BookOpen, Clock, Bell } from "lucide-react";
+import { Mic, BookOpen, Clock, Bell, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Subject, Recording } from "../types";
 import { getSlugFromUUID } from "../lib/subjectMapping";
+import { useState } from "react";
+import GlobalSearch from "./GlobalSearch";
 
 type DashboardProps = {
   subjects: Subject[];
@@ -36,11 +38,22 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
   const today = getTodayDayName();
   return subjects.filter(subj => Array.isArray(subj.schedule_days) && subj.schedule_days.includes(today));
 }
+  const [showSearch, setShowSearch] = useState(false);
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
       {/* Header */}
       <div className="px-6 pt-16 pb-8">
-        <div className="text-sm text-purple-400 mb-2">{today}</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-purple-400">{today}</div>
+          <button
+            onClick={() => setShowSearch(true)}
+            className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all active:scale-95"
+            title="Search"
+          >
+            <Search className="w-5 h-5 text-purple-600" />
+          </button>
+        </div>
         <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
         <p className="text-gray-500">Ready to record knowledge?</p>
         
@@ -161,6 +174,9 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
           })}
         </div>
       </div>
+
+      {/* Global Search Modal */}
+      {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
     </div>
   );
 }
