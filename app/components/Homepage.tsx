@@ -1,10 +1,11 @@
 "use client";
-import { Mic, BookOpen, Clock, Bell, Search } from "lucide-react";
+import { Mic, BookOpen, Clock, Bell, Search, LogOut, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Subject, Recording } from "../types";
 import { getSlugFromUUID } from "../lib/subjectMapping";
 import { useState } from "react";
 import GlobalSearch from "./GlobalSearch";
+import { useAuth } from "../contexts/AuthContext";
 
 type DashboardProps = {
   subjects: Subject[];
@@ -39,6 +40,12 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
   return subjects.filter(subj => Array.isArray(subj.schedule_days) && subj.schedule_days.includes(today));
 }
   const [showSearch, setShowSearch] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
@@ -46,13 +53,43 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
       <div className="px-6 pt-16 pb-8">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-purple-400">{today}</div>
-          <button
-            onClick={() => setShowSearch(true)}
-            className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all active:scale-95"
-            title="Search"
-          >
-            <Search className="w-5 h-5 text-purple-600" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all active:scale-95"
+              title="Search"
+            >
+              <Search className="w-5 h-5 text-purple-600" />
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all active:scale-95"
+                title="Account"
+              >
+                <UserIcon className="w-5 h-5 text-purple-600" />
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {user?.email}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {user?.user_metadata?.full_name || 'User'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors text-red-600"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm font-medium">Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
         <p className="text-gray-500">Ready to record knowledge?</p>
