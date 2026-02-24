@@ -101,10 +101,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      // Use environment variable or fallback to window.location.origin
+      const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: `${redirectUrl}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
       
