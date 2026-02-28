@@ -1,27 +1,28 @@
-import { supabaseAdmin } from '../lib/supabase-admin';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { storageService } from './storageService';
 
 export interface CreateRecordingParams {
+  userId: string;
   subjectId: string;
   audioBlob: Blob;
   duration: number;
   title?: string;
+  supabase: SupabaseClient;
 }
 
 export const recordingService = {
   async createRecording(params: CreateRecordingParams) {
-    const { subjectId, audioBlob, duration, title } = params;
-
-    const userId = '00000000-0000-0000-0000-000000000000'; 
+    const { userId, subjectId, audioBlob, duration, title, supabase } = params;
     
     try {
       console.log('Uploading audio to storage...');
       const audioUrl = await storageService.uploadAudio(audioBlob, userId);
       
       console.log('Creating recording in database...', { audioUrl, subjectId, duration });
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('recordings')
         .insert({
+          user_id: userId,
           subject_id: subjectId,
           audio_url: audioUrl,
           duration: duration,
@@ -47,8 +48,8 @@ export const recordingService = {
       throw error;
     }
   },
-  async getRecordingsBySubject(subjectId: string) {
-    const { data, error } = await supabaseAdmin
+  async getRecordingsBySubject(subjectId: string, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('recordings')
       .select('*')
       .eq('subject_id', subjectId)
@@ -57,8 +58,8 @@ export const recordingService = {
     if (error) throw error;
     return data;
   },
-  async getRecording(recordingId: string) {
-    const { data, error } = await supabaseAdmin
+  async getRecording(recordingId: string, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('recordings')
       .select('*')
       .eq('id', recordingId)
@@ -68,12 +69,12 @@ export const recordingService = {
     return data;
   },
 
-  async deleteRecording(recordingId: string) {
-    const recording = await this.getRecording(recordingId);
+  async deleteRecording(recordingId: string, supabase: SupabaseClient) {
+    const recording = await this.getRecording(recordingId, supabase);
     
     await storageService.deleteAudio(recording.audio_url);
     
-    const { error } = await supabaseAdmin
+    const { error} = await supabase
       .from('recordings')
       .delete()
       .eq('id', recordingId);
@@ -81,8 +82,8 @@ export const recordingService = {
     if (error) throw error;
   },
 
-  async updateRecordingTitle(recordingId: string, title: string) {
-    const { data, error } = await supabaseAdmin
+  async updateRecordingTitle(recordingId: string, title: string, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('recordings')
       .update({ title })
       .eq('id', recordingId)

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2 } from "lucide-react";
+import { fetchWithAuth } from "../../../lib/fetch-with-auth";
 
 export default function TranscriptionPage() {
   const router = useRouter();
@@ -25,7 +26,9 @@ export default function TranscriptionPage() {
 
   const fetchTranscription = async () => {
     try {
-      const response = await fetch(`/api/transcriptions/${recordingId}`);
+      const response = await fetchWithAuth(`/api/transcriptions/${recordingId}`, {
+        method: 'GET',
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         if (response.status === 404) {
@@ -87,7 +90,7 @@ export default function TranscriptionPage() {
     if (!confirmed) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/recordings/${recordingId}`, {
+      const response = await fetchWithAuth(`/api/recordings/${recordingId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

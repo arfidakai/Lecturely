@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { transcriptionService } from '../../../services/transcriptionService';
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from '../../../lib/auth-helpers';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ recordingId: string }> }
 ) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { recordingId } = await params;
 
-    const transcriptions = await transcriptionService.getTranscriptionsByRecording(recordingId);
+    const supabase = createAuthenticatedSupabaseClient(request);
+    const transcriptions = await transcriptionService.getTranscriptionsByRecording(recordingId, supabase);
 
     if (!transcriptions || transcriptions.length === 0) {
       return NextResponse.json(

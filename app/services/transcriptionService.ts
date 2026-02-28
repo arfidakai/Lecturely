@@ -1,18 +1,19 @@
-import { supabaseAdmin } from '../lib/supabase-admin';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface CreateTranscriptionParams {
   recordingId: string;
   text: string;
   timestamp: number;
   important?: boolean;
+  supabase: SupabaseClient;
 }
 
 export const transcriptionService = {
  
   async createTranscription(params: CreateTranscriptionParams) {
-    const { recordingId, text, timestamp, important = false } = params;
+    const { recordingId, text, timestamp, important = false, supabase } = params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('transcriptions')
       .insert({
         recording_id: recordingId,
@@ -27,8 +28,8 @@ export const transcriptionService = {
     return data;
   },
 
-  async getTranscriptionsByRecording(recordingId: string) {
-    const { data, error } = await supabaseAdmin
+  async getTranscriptionsByRecording(recordingId: string, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('transcriptions')
       .select('*')
       .eq('recording_id', recordingId)
@@ -38,8 +39,8 @@ export const transcriptionService = {
     return data;
   },
 
-  async updateTranscriptionImportance(transcriptionId: string, important: boolean) {
-    const { data, error } = await supabaseAdmin
+  async updateTranscriptionImportance(transcriptionId: string, important: boolean, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('transcriptions')
       .update({ important })
       .eq('id', transcriptionId)
@@ -50,8 +51,8 @@ export const transcriptionService = {
     return data;
   },
 
-  async deleteTranscription(transcriptionId: string) {
-    const { error } = await supabaseAdmin
+  async deleteTranscription(transcriptionId: string, supabase: SupabaseClient) {
+    const { error } = await supabase
       .from('transcriptions')
       .delete()
       .eq('id', transcriptionId);

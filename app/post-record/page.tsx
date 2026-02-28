@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Clock, Calendar, CheckCircle, Save, Loader2, Trash2, X } from "lucide-react";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
+import { fetchWithAuth } from "../lib/fetch-with-auth";
 
 function PostRecordContent() {
   const router = useRouter();
@@ -62,11 +63,8 @@ function PostRecordContent() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); 
       
-      const transcribeResponse = await fetch('/api/transcribe', {
+      const transcribeResponse = await fetchWithAuth('/api/transcribe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ recordingId }),
         signal: controller.signal,
       });
@@ -118,7 +116,7 @@ function PostRecordContent() {
     setTranscriptionError(null);
 
     try {
-      const response = await fetch(`/api/recordings/${recordingId}`, {
+      const response = await fetchWithAuth(`/api/recordings/${recordingId}`, {
         method: 'DELETE',
       });
 

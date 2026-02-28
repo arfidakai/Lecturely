@@ -42,11 +42,20 @@ export default function SubjectSelectionPage() {
   const handleAddSubject = async () => {
     if (!newSubjectName.trim() || !newLecturer.trim() || !newIcon || !newColor) return;
     setAdding(true);
+    
+    // Get authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setAdding(false);
+      return;
+    }
+    
     const { error } = await supabase.from("subjects").insert({
       name: newSubjectName.trim(),
       lecturer: newLecturer.trim(),
       icon: newIcon,
       color: newColor,
+      user_id: user.id,
     });
     setAdding(false);
     if (!error) {

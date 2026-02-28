@@ -25,7 +25,12 @@ export class RecordingService {
   
   async createRecording(params: CreateRecordingParams): Promise<Recording> {
     try {
-      const tempUserId = 'temp-user-' + Date.now();
+      // Get authenticated user from Supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error('User not authenticated');
+      }
       
       const recordingId = crypto.randomUUID();
 
@@ -33,7 +38,7 @@ export class RecordingService {
       
       const audioUrl = await storageService.uploadAudio(
         params.audioBlob,
-        tempUserId,
+        user.id,
         recordingId
       );
 
@@ -43,7 +48,7 @@ export class RecordingService {
         .from('recordings')
         .insert({
           id: recordingId,
-          user_id: tempUserId,
+          user_id: user.id,
           subject_id: params.subjectId,
           title: params.title || 'Untitled Recording',
           audio_url: audioUrl,

@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../lib/supabase-admin';
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from '../../lib/auth-helpers';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { recordingId, reminderTime } = await request.json();
 
     if (!recordingId || !reminderTime) {
@@ -12,11 +21,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Untuk sementara, kita skip user_id (bisa ditambahkan nanti dengan auth)
-    // Atau gunakan hardcoded user_id untuk testing
-    const { data, error } = await supabaseAdmin
+    const supabase = createAuthenticatedSupabaseClient(request);
+    const { data, error } = await supabase
       .from('reminders')
       .insert({
+        user_id: user.id,
         recording_id: recordingId,
         reminder_time: reminderTime,
         sent: false,
@@ -44,10 +53,20 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const recordingId = searchParams.get('recordingId');
 
-    let query = supabaseAdmin
+    const supabase = createAuthenticatedSupabaseClient(request);
+    let query = supabase
       .from('reminders')
       .select(`
         *,
