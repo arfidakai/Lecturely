@@ -3,7 +3,7 @@ import Groq from 'groq-sdk';
 import { transcriptionService } from '../../services/transcriptionService';
 import { recordingService } from '../../services/recordingService-server';
 import { storageService } from '../../services/storageService';
-import { supabaseAdmin } from '../../lib/supabase-admin';
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from '../../lib/auth-helpers';
 
 export const maxDuration = 300;
 
@@ -13,6 +13,15 @@ const groq = new Groq({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const recordingId = body.recordingId as string;
 
@@ -25,7 +34,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Starting transcription for recording:', recordingId);
 
-    const recording = await recordingService.getRecording(recordingId);
+    const supabase = createAuthenticatedSupabaseClient(request);
+    const recording = await recordingService.getRecording(recordingId, supabase);
     
     if (!recording || !recording.audio_url) {
       return NextResponse.json(
@@ -66,10 +76,12 @@ export async function POST(request: NextRequest) {
     const transcriptionData = await transcriptionService.createTranscription({
       recordingId,
       text: transcription.text,
-      timestamp: 0, 
+      timestamp: 0,
+      supabase,
     });
 
-    await supabaseAdmin
+    // Use authenticated client to update recording
+    await supabase
       .from('recordings')
       .update({ transcribed: true })
       .eq('id', recordingId);

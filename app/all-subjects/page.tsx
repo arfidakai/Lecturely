@@ -60,12 +60,21 @@ export default function AllSubjectsPage() {
   const handleAddSubject = async () => {
     if (!newSubjectName.trim() || !newLecturer.trim() || !newIcon || !newColor) return;
     setAdding(true);
+    
+    // Get authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setAdding(false);
+      return;
+    }
+    
     const { error } = await supabase.from("subjects").insert({
       name: newSubjectName.trim(),
       lecturer: newLecturer.trim(),
       icon: newIcon,
       color: newColor,
       schedule_days: newDays,
+      user_id: user.id,
     });
     setAdding(false);
     if (!error) {

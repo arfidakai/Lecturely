@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Bell, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Swal from "sweetalert2";
+import { fetchWithAuth } from "../lib/fetch-with-auth";
 
 interface Recording {
   id: string;
@@ -78,11 +79,8 @@ function ReminderContent() {
     reminderTime.setHours(reminderTime.getHours() + option.hours);
 
     try {
-      const response = await fetch('/api/reminders', {
+      const response = await fetchWithAuth('/api/reminders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           recordingId,
           reminderTime: reminderTime.toISOString(),

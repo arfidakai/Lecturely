@@ -5,6 +5,7 @@ import { ChevronLeft, Pause, Square, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
+import { fetchWithAuthFormData } from "../lib/fetch-with-auth";
 
 function RecordingContent() {
   const router = useRouter();
@@ -152,10 +153,7 @@ function RecordingContent() {
             formData.append('duration', duration.toString());
             formData.append('title', title.trim());
 
-            const response = await fetch('/api/recordings', {
-              method: 'POST',
-              body: formData,
-            });
+            const response = await fetchWithAuthFormData('/api/recordings', formData);
 
             if (!response.ok) {
               throw new Error('Failed to save recording');

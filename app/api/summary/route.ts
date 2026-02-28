@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { transcriptionService } from '../../services/transcriptionService';
 import { summaryService } from '../../services/summaryService';
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from '../../lib/auth-helpers';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -27,6 +28,15 @@ function chunkText(text: string, maxWords: number = 1500): string[] {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { recordingId } = await request.json();
 
     if (!recordingId) {
@@ -38,7 +48,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Generating summary for recording:', recordingId);
 
-    const existingSummary = await summaryService.getSummaryByRecording(recordingId);
+    const supabase = createAuthenticatedSupabaseClient(request);
+    const existingSummary = await summaryService.getSummaryByRecording(recordingId, supabase);
     if (existingSummary) {
       return NextResponse.json({
         success: true,
@@ -47,7 +58,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const transcriptions = await transcriptionService.getTranscriptionsByRecording(recordingId);
+    const transcriptions = await transcriptionService.getTranscriptionsByRecording(recordingId, supabase);
     
     if (!transcriptions || transcriptions.length === 0) {
       return NextResponse.json(
@@ -105,6 +116,7 @@ export async function POST(request: NextRequest) {
     const summary = await summaryService.createSummary({
       recordingId,
       content: finalSummary,
+      supabase,
     });
 
     return NextResponse.json({
@@ -126,6 +138,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const recordingId = searchParams.get('recordingId');
 
@@ -136,7 +157,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const summary = await summaryService.getSummaryByRecording(recordingId);
+    const supabase = createAuthenticatedSupabaseClient(request);
+    const summary = await summaryService.getSummaryByRecording(recordingId, supabase);
 
     if (!summary) {
       return NextResponse.json(

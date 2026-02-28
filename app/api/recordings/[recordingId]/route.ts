@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordingService } from '../../../services/recordingService-server';
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from '../../../lib/auth-helpers';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ recordingId: string }> }
 ) {
   try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { recordingId } = await params;
 
     if (!recordingId) {
@@ -15,7 +25,8 @@ export async function DELETE(
       );
     }
 
-    await recordingService.deleteRecording(recordingId);
+    const supabase = createAuthenticatedSupabaseClient(request);
+    await recordingService.deleteRecording(recordingId, supabase);
 
     return NextResponse.json({
       success: true,

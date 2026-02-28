@@ -47,6 +47,9 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
     await signOut();
   };
 
+  // Check if user is new (no subjects/recordings)
+  const isNewUser = subjects.length === 0 && recordings.length === 0;
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
       {/* Header */}
@@ -94,123 +97,249 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
         <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
         <p className="text-gray-500">Ready to record knowledge?</p>
         
-        {/* My Reminders Link */}
-        <button
-          onClick={() => router.push('/my-reminders')}
-          className="mt-4 flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors"
-        >
-          <Bell className="w-4 h-4" />
-          <span>My Reminders</span>
-        </button>
+        {/* My Reminders Link - Only show for existing users */}
+        {!isNewUser && (
+          <button
+            onClick={() => router.push('/my-reminders')}
+            className="mt-4 flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors"
+          >
+            <Bell className="w-4 h-4" />
+            <span>My Reminders</span>
+          </button>
+        )}
       </div>
     
 
-      {/* Quick Record Button */}
-      <div className="px-6 mb-8">
-        <button
-          onClick={onNavigateToSubjects}
-          className="w-full bg-purple-600 text-white rounded-3xl py-5 px-6 shadow-lg shadow-purple-200 flex items-center justify-center gap-3 hover:shadow-xl transition-all active:scale-[0.98]"
-        >
-          <div className="bg-white/20 p-2 rounded-full">
-            <Mic className="w-6 h-6" />
-          </div>
-          <span className="text-lg">Start Recording</span>
-        </button>
-      </div>
-
-      {/* Today's Subjects */}
-      <div className="px-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg text-gray-900">Today's Subjects</h2>
+      {/* Quick Record Button - Only show for existing users */}
+      {!isNewUser && (
+        <div className="px-6 mb-8">
           <button
-            onClick={() => router.push('/all-subjects')}
-            className="text-sm text-purple-500"
+            onClick={onNavigateToSubjects}
+            className="w-full bg-purple-600 text-white rounded-3xl py-5 px-6 shadow-lg shadow-purple-200 flex items-center justify-center gap-3 hover:shadow-xl transition-all active:scale-[0.98]"
           >
-            See All
+            <div className="bg-white/20 p-2 rounded-full">
+              <Mic className="w-6 h-6" />
+            </div>
+            <span className="text-lg">Start Recording</span>
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {filterSubjectsByToday(subjects).slice(0, 4).map((subject) => {
-            const subjectSlug = getSlugFromUUID(subject.id) || subject.id;
-            return (
-              <button
-                key={subject.id}
-                onClick={() => onNavigateToNotesList(subjectSlug)}
-                className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 text-2xl"
-                  style={{ backgroundColor: `${subject.color}20` }}
-                >
-                  {subject.icon}
-                </div>
-                <div className="text-sm text-gray-900 mb-1 line-clamp-1">
-                  {subject.name}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {recordings.filter((r) => r.subjectId === subject.id).length}{" "}
-                  notes
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
-      {/* Recent Recordings */}
-      <div className="px-6 pb-8 flex-1 overflow-y-auto">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-4 h-4 text-purple-500" />
-          <h2 className="text-lg text-gray-900">Recent</h2>
-        </div>
+      {/* Welcome Guide for New Users */}
+      {isNewUser ? (
+        <div className="flex-1 px-6 pb-8 overflow-y-auto">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-5 mb-4">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-purple-600 rounded-full mx-auto mb-3 flex items-center justify-center">
+                <span className="text-3xl">🎓</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">
+                Welcome to Lecturely!
+              </h2>
+              <p className="text-sm text-gray-600">
+                Your AI-powered lecture note companion
+              </p>
+            </div>
 
-        <div className="space-y-3">
-          {recentRecordings.map((recording) => {
-            const recordingDate = new Date(recording.date);
-            const formattedDate = recordingDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            });
-            const formattedTime = recordingDate.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-            });
-            const durationMin = Math.floor(recording.duration / 60);
-            const subjectSlug = getSlugFromUUID(recording.subjectId) || recording.subjectId;
+            {/* Features Highlight - Moved to top */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-white rounded-xl p-3 text-center">
+                <div className="text-2xl mb-1">🎤</div>
+                <div className="text-xs font-medium text-gray-900">Audio Recording</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">High quality capture</div>
+              </div>
+              <div className="bg-white rounded-xl p-3 text-center">
+                <div className="text-2xl mb-1">📝</div>
+                <div className="text-xs font-medium text-gray-900">Auto Transcribe</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Speech to text</div>
+              </div>
+              <div className="bg-white rounded-xl p-3 text-center">
+                <div className="text-2xl mb-1">✨</div>
+                <div className="text-xs font-medium text-gray-900">AI Summary</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Smart key points</div>
+              </div>
+              <div className="bg-white rounded-xl p-3 text-center">
+                <div className="text-2xl mb-1">🔔</div>
+                <div className="text-xs font-medium text-gray-900">Reminders</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Never miss review</div>
+              </div>
+            </div>
 
-            return (
-              <button
-                key={recording.id}
-                onClick={() => router.push(`/transcription/${recording.id}/${recording.subjectId}`)}
-                className="w-full bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
-              >
+            <div className="space-y-3">
+              {/* Step 1 */}
+              <div className="bg-white rounded-xl p-3 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="bg-purple-100 p-2.5 rounded-xl">
-                    <BookOpen className="w-5 h-5 text-purple-600" />
+                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    1
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-900 mb-1">
-                      {recording.title && recording.title.trim() ? recording.title : recording.subjectName}
-                    </div>
-                    <div className="text-xs text-gray-400 flex items-center gap-2">
-                      <span>{formattedDate}</span>
-                      <span>•</span>
-                      <span>{formattedTime}</span>
-                      <span>•</span>
-                      <span>{durationMin} min</span>
-                    </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-sm mb-0.5">
+                      Add Your Subjects
+                    </h3>
+                    <p className="text-xs text-gray-600">
+                      Create subjects for your classes and organize notes by topic
+                    </p>
                   </div>
-                  {recording.transcribed && (
-                    <div className="bg-purple-500 text-white text-xs px-2.5 py-1 rounded-full">
-                      ✓
-                    </div>
-                  )}
                 </div>
-              </button>
-            );
-          })}
+              </div>
+
+              {/* Step 2 */}
+              <div className="bg-white rounded-xl p-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    2
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-sm mb-0.5">
+                      Record Your Lectures
+                    </h3>
+                    <p className="text-xs text-gray-600">
+                      Tap "Start Recording" and select a subject to capture audio
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="bg-white rounded-xl p-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-sm mb-0.5">
+                      Get AI Transcription
+                    </h3>
+                    <p className="text-xs text-gray-600">
+                      Recordings are automatically transcribed to text
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="bg-white rounded-xl p-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    4
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-sm mb-0.5">
+                      Generate Summaries
+                    </h3>
+                    <p className="text-xs text-gray-600">
+                      AI creates concise summaries with key points
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={onNavigateToSubjects}
+              className="w-full mt-4 bg-purple-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-purple-700 transition-all active:scale-[0.98]"
+            >
+              Get Started - Add Your First Subject
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Today's Subjects */}
+          <div className="px-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg text-gray-900">Today's Subjects</h2>
+              <button
+                onClick={() => router.push('/all-subjects')}
+                className="text-sm text-purple-500"
+              >
+                See All
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {filterSubjectsByToday(subjects).slice(0, 4).map((subject) => {
+                const subjectSlug = getSlugFromUUID(subject.id) || subject.id;
+                return (
+                  <button
+                    key={subject.id}
+                    onClick={() => onNavigateToNotesList(subjectSlug)}
+                    className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
+                  >
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 text-2xl"
+                      style={{ backgroundColor: `${subject.color}20` }}
+                    >
+                      {subject.icon}
+                    </div>
+                    <div className="text-sm text-gray-900 mb-1 line-clamp-1">
+                      {subject.name}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {recordings.filter((r) => r.subjectId === subject.id).length}{" "}
+                      notes
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recent Recordings */}
+          <div className="px-6 pb-8 flex-1 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 text-purple-500" />
+              <h2 className="text-lg text-gray-900">Recent</h2>
+            </div>
+
+            <div className="space-y-3">
+              {recentRecordings.map((recording) => {
+                const recordingDate = new Date(recording.date);
+                const formattedDate = recordingDate.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+                const formattedTime = recordingDate.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                });
+                const durationMin = Math.floor(recording.duration / 60);
+                const subjectSlug = getSlugFromUUID(recording.subjectId) || recording.subjectId;
+
+                return (
+                  <button
+                    key={recording.id}
+                    onClick={() => router.push(`/transcription/${recording.id}/${recording.subjectId}`)}
+                    className="w-full bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="bg-purple-100 p-2.5 rounded-xl">
+                        <BookOpen className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-900 mb-1">
+                          {recording.title && recording.title.trim() ? recording.title : recording.subjectName}
+                        </div>
+                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                          <span>{formattedDate}</span>
+                          <span>•</span>
+                          <span>{formattedTime}</span>
+                          <span>•</span>
+                          <span>{durationMin} min</span>
+                        </div>
+                      </div>
+                      {recording.transcribed && (
+                        <div className="bg-purple-500 text-white text-xs px-2.5 py-1 rounded-full">
+                          ✓
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Global Search Modal */}
       {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}

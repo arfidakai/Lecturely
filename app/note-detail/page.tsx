@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Trash2, Download, Share2, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { fetchWithAuth } from "../lib/fetch-with-auth";
 
 interface Recording {
   id: string;
@@ -114,7 +115,7 @@ function NoteDetailContent() {
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`/api/recordings/${recordingId}`, {
+      const response = await fetchWithAuth(`/api/recordings/${recordingId}`, {
         method: "DELETE",
       });
 
@@ -142,11 +143,8 @@ function NoteDetailContent() {
     setIsGeneratingSummary(true);
 
     try {
-      const response = await fetch("/api/summary", {
+      const response = await fetchWithAuth("/api/summary", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ recordingId }),
       });
 

@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQL helper/testing files (don't push local SQL queries)
+check-*.sql
+enable-*.sql
+assign-*.sql
+create-rls-*.sql

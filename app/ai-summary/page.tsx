@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Loader2, Download, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import { fetchWithAuth } from "../lib/fetch-with-auth";
 
 function AISummaryContent() {
   const router = useRouter();
@@ -27,7 +28,9 @@ function AISummaryContent() {
 
   const checkAndGenerateSummary = async () => {
     try {
-      const checkResponse = await fetch(`/api/summary?recordingId=${recordingId}`);
+      const checkResponse = await fetchWithAuth(`/api/summary?recordingId=${recordingId}`, {
+        method: 'GET',
+      });
       
       if (checkResponse.ok) {
         const data = await checkResponse.json();
@@ -50,11 +53,8 @@ function AISummaryContent() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/summary', {
+      const response = await fetchWithAuth('/api/summary', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ recordingId }),
       });
 

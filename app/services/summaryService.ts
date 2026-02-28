@@ -1,15 +1,16 @@
-import { supabaseAdmin } from '../lib/supabase-admin';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface CreateSummaryParams {
   recordingId: string;
   content: string;
+  supabase: SupabaseClient;
 }
 
 export const summaryService = {
   async createSummary(params: CreateSummaryParams) {
-    const { recordingId, content } = params;
+    const { recordingId, content, supabase } = params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('summaries')
       .insert({
         recording_id: recordingId,
@@ -22,8 +23,8 @@ export const summaryService = {
     return data;
   },
 
-  async getSummaryByRecording(recordingId: string) {
-    const { data, error } = await supabaseAdmin
+  async getSummaryByRecording(recordingId: string, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('summaries')
       .select('*')
       .eq('recording_id', recordingId)
@@ -38,8 +39,8 @@ export const summaryService = {
     return data;
   },
 
-  async updateSummary(summaryId: string, content: string) {
-    const { data, error } = await supabaseAdmin
+  async updateSummary(summaryId: string, content: string, supabase: SupabaseClient) {
+    const { data, error } = await supabase
       .from('summaries')
       .update({ content })
       .eq('id', summaryId)
@@ -49,8 +50,8 @@ export const summaryService = {
     if (error) throw error;
     return data;
   },
-  async deleteSummary(summaryId: string) {
-    const { error } = await supabaseAdmin
+  async deleteSummary(summaryId: string, supabase: SupabaseClient) {
+    const { error } = await supabase
       .from('summaries')
       .delete()
       .eq('id', summaryId);

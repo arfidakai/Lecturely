@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Bell, Trash2, Clock, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Swal from "sweetalert2";
+import { fetchWithAuth } from "../lib/fetch-with-auth";
 
 interface Reminder {
   id: string;
@@ -34,7 +35,9 @@ export default function MyRemindersPage() {
   const fetchReminders = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/reminders');
+      const response = await fetchWithAuth('/api/reminders', {
+        method: 'GET',
+      });
       const data = await response.json();
       if (data.success) {
         setReminders(data.reminders || []);
