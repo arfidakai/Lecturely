@@ -53,7 +53,7 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
       {/* Header */}
-      <div className="px-6 pt-16 pb-8">
+      <div className="px-6 pt-6 pb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-purple-400">{today}</div>
           <div className="flex items-center gap-2">
@@ -94,8 +94,13 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
             </div>
           </div>
         </div>
-        <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
-        <p className="text-gray-500">Ready to record knowledge?</p>
+        {/* Only show greeting for existing users */}
+        {!isNewUser && (
+          <>
+            <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
+            <p className="text-gray-500">Ready to record knowledge?</p>
+          </>
+        )}
         
         {/* My Reminders Link - Only show for existing users */}
         {!isNewUser && (
