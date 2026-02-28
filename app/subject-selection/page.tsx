@@ -5,6 +5,15 @@ import { ChevronLeft, Plus, X } from "lucide-react";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
 
+const dayOptions = [
+  { value: "Monday", label: "Mon" },
+  { value: "Tuesday", label: "Tue" },
+  { value: "Wednesday", label: "Wed" },
+  { value: "Thursday", label: "Thu" },
+  { value: "Friday", label: "Fri" },
+  { value: "Saturday", label: "Sat" },
+  { value: "Sunday", label: "Sun" },
+];
 
 export default function SubjectSelectionPage() {
   const router = useRouter();
@@ -30,6 +39,7 @@ export default function SubjectSelectionPage() {
   const [newLecturer, setNewLecturer] = useState("");
   const [newIcon, setNewIcon] = useState("📖");
   const [newColor, setNewColor] = useState("#9b87f5");
+  const [newDays, setNewDays] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
 
   const handleSelectSubject = (subject: Subject) => {
@@ -55,6 +65,7 @@ export default function SubjectSelectionPage() {
       lecturer: newLecturer.trim(),
       icon: newIcon,
       color: newColor,
+      schedule_days: newDays,
       user_id: user.id,
     });
     setAdding(false);
@@ -64,6 +75,7 @@ export default function SubjectSelectionPage() {
       setNewLecturer("");
       setNewIcon("📖");
       setNewColor("#9b87f5");
+      setNewDays([]);
       fetchSubjects();
     } else {
       alert("Failed to add subject");
@@ -203,6 +215,22 @@ export default function SubjectSelectionPage() {
                         onClick={() => setNewColor(color)}
                         aria-label={color}
                       />
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <div className="mb-1 text-sm text-gray-700">Schedule Days</div>
+                  <div className="flex flex-wrap gap-2">
+                    {dayOptions.map((day) => (
+                      <label key={day.value} className={`px-2 py-1 rounded-lg border cursor-pointer text-xs ${newDays.includes(day.value) ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                        <input
+                          type="checkbox"
+                          className="mr-1 accent-purple-500"
+                          checked={newDays.includes(day.value)}
+                          onChange={() => setNewDays((prev) => prev.includes(day.value) ? prev.filter(d => d !== day.value) : [...prev, day.value])}
+                        />
+                        {day.label}
+                      </label>
                     ))}
                   </div>
                 </div>
