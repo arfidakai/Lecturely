@@ -106,3 +106,83 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { id, sent } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing reminder id' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof sent !== 'boolean') {
+      return NextResponse.json(
+        { error: 'Invalid sent field, must be boolean' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAuthenticatedSupabaseClient(request);
+    
+    // First, check if the reminder exists and belongs to user
+    const { data: existingReminder, error: fetchError } = await supabase
+      .from('reminders')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError || !existingReminder) {
+      return NextResponse.json(
+        { error: 'Reminder not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if reminder belongs to user (or has no user_id - legacy data)
+    if (existingReminder.user_id && existingReminder.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized - not your reminder' },
+        { status: 403 }
+      );
+    }
+
+    // Update the reminder
+    const { data, error } = await supabase
+      .from('reminders')
+      .update({ sent })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      reminder: data,
+    });
+  } catch (error: any) {
+    console.error('Error updating reminder:', error);
+    return NextResponse.json(
+      { 
+        error: 'Failed to update reminder',
+        details: error.message,
+      },
+      { status: 500 }
+    );
+  }
+}

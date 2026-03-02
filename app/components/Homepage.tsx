@@ -3,9 +3,13 @@ import { Mic, BookOpen, Clock, Bell, Search, LogOut, User as UserIcon } from "lu
 import { useRouter } from "next/navigation";
 import { Subject, Recording } from "../types";
 import { getSlugFromUUID } from "../lib/subjectMapping";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GlobalSearch from "./GlobalSearch";
 import { useAuth } from "../contexts/AuthContext";
+import { useNotifications } from "../hooks/useNotifications";
+import { useReminderChecker } from "../hooks/useReminderChecker";
+import { useServiceWorker } from "../hooks/useServiceWorker";
+import NotificationToast from "./NotificationToast";
 
 type DashboardProps = {
   subjects: Subject[];
@@ -41,7 +45,13 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
 }
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const { user, signOut } = useAuth();
+
+  // Initialize notification system
+  const { permission, requestPermission, showNotification, removeNotification, notifications } = useNotifications();
+  useReminderChecker(); // Start automatic reminder checking
+  useServiceWorker(); // Register service worker for PWA
 
   const handleLogout = async () => {
     await signOut();
@@ -49,6 +59,40 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
 
   // Check if user is new (no subjects/recordings)
   const isNewUser = subjects.length === 0 && recordings.length === 0;
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if (permission === 'default' && !isNewUser) {
+      // Show banner after 2 seconds if user hasn't decided yet
+      const timer = setTimeout(() => {
+        setShowNotificationBanner(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [permission, isNewUser]);
+
+  const handleEnableNotifications = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      showNotification('Notifications Enabled! 🎉', {
+        body: 'You\'ll now receive reminder notifications',
+        icon: '🎉',
+      });
+    }
+    setShowNotificationBanner(false);
+  };
+
+  // Test notification function
+  const handleTestNotification = () => {
+    if (permission === 'granted') {
+      showNotification('🔔 Test Notification', {
+        body: 'This is a test notification. If you see this, notifications are working perfectly!',
+        icon: '🔔',
+      });
+    } else {
+      alert('Please enable notifications first');
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
@@ -104,16 +148,56 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
         
         {/* My Reminders Link - Only show for existing users */}
         {!isNewUser && (
-          <button
-            onClick={() => router.push('/my-reminders')}
-            className="mt-4 flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors"
-          >
-            <Bell className="w-4 h-4" />
-            <span>My Reminders</span>
-          </button>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={() => router.push('/my-reminders')}
+              className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              <Bell className="w-4 h-4" />
+              <span>My Reminders</span>
+            </button>
+            {permission === 'granted' && (
+              <button
+                onClick={handleTestNotification}
+                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 transition-colors active:scale-95"
+              >
+                Test 🔔
+              </button>
+            )}
+          </div>
         )}
       </div>
     
+      {/* Notification Permission Banner */}
+      {showNotificationBanner && !isNewUser && (
+        <div className="mx-6 mb-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl p-4 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="bg-white/20 p-2 rounded-full mt-0.5">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold mb-1">Enable Reminder Notifications</h3>
+              <p className="text-sm text-purple-100 mb-3">
+                Get notified when it's time to review your notes and never miss a study session!
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEnableNotifications}
+                  className="px-4 py-2 bg-white text-purple-600 rounded-xl text-sm font-medium hover:bg-purple-50 transition-colors active:scale-95"
+                >
+                  Enable Notifications
+                </button>
+                <button
+                  onClick={() => setShowNotificationBanner(false)}
+                  className="px-4 py-2 bg-white/10 text-white rounded-xl text-sm font-medium hover:bg-white/20 transition-colors active:scale-95"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Record Button - Only show for existing users */}
       {!isNewUser && (
@@ -348,6 +432,19 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
 
       {/* Global Search Modal */}
       {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
+
+      {/* Custom Notification Toasts */}
+      {notifications.map((notification) => (
+        <NotificationToast
+          key={notification.id}
+          show={true}
+          title={notification.title}
+          message={notification.message}
+          icon={notification.icon}
+          onClose={() => removeNotification(notification.id)}
+          onClick={notification.onClick}
+        />
+      ))}
     </div>
   );
 }
