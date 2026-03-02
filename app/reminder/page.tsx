@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Bell, CheckCircle, Loader2 } from "lucide-react";
+import { ChevronLeft, Bell, CheckCircle, Loader2, Calendar, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Swal from "sweetalert2";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
@@ -25,6 +25,8 @@ function ReminderContent() {
   const [recording, setRecording] = useState<Recording | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [customDate, setCustomDate] = useState("");
+  const [customTime, setCustomTime] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -34,6 +36,7 @@ function ReminderContent() {
     { id: "tomorrow", label: "Tomorrow morning", hours: 24 },
     { id: "3days", label: "In 3 days", hours: 72 },
     { id: "1week", label: "In 1 week", hours: 168 },
+    { id: "custom", label: "Custom date & time", hours: 0 },
   ];
 
   useEffect(() => {
@@ -69,14 +72,42 @@ function ReminderContent() {
   const handleSetReminder = async () => {
     if (!selectedTime || !recordingId) return;
     
-    const option = reminderOptions.find((o) => o.id === selectedTime);
-    if (!option) return;
-
     setSaving(true);
     
-    // Calculate reminder time
-    const reminderTime = new Date();
-    reminderTime.setHours(reminderTime.getHours() + option.hours);
+    let reminderTime: Date;
+
+    // Handle custom time
+    if (selectedTime === "custom") {
+      if (!customDate || !customTime) {
+        Swal.fire({
+          icon: "warning",
+          title: "Incomplete",
+          text: "Please select both date and time for custom reminder.",
+        });
+        setSaving(false);
+        return;
+      }
+      
+      reminderTime = new Date(`${customDate}T${customTime}`);
+      
+      // Check if time is in the past
+      if (reminderTime <= new Date()) {
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid Time",
+          text: "Please select a future date and time.",
+        });
+        setSaving(false);
+        return;
+      }
+    } else {
+      // Handle preset options
+      const option = reminderOptions.find((o) => o.id === selectedTime);
+      if (!option) return;
+      
+      reminderTime = new Date();
+      reminderTime.setHours(reminderTime.getHours() + option.hours);
+    }
 
     try {
       const response = await fetchWithAuth('/api/reminders', {
@@ -155,7 +186,12 @@ function ReminderContent() {
                       } disabled:opacity-50`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-base">{option.label}</span>
+                        <div className="flex items-center gap-2">
+                          {option.id === "custom" && (
+                            <Calendar className="w-5 h-5" />
+                          )}
+                          <span className="text-base">{option.label}</span>
+                        </div>
                         {selectedTime === option.id && (
                           <CheckCircle className="w-5 h-5" />
                         )}
@@ -163,6 +199,37 @@ function ReminderContent() {
                     </button>
                   ))}
                 </div>
+
+                {/* Custom Time Picker */}
+                {selectedTime === "custom" && (
+                  <div className="bg-white rounded-2xl p-5 shadow-md border-2 border-purple-200 mb-6 space-y-4">
+                    <div className="flex items-center gap-2 text-purple-700 mb-3">
+                      <Clock className="w-5 h-5" />
+                      <h3 className="font-semibold">Select Date & Time</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-2">Date</label>
+                        <input
+                          type="date"
+                          value={customDate}
+                          onChange={(e) => setCustomDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-2">Time</label>
+                        <input
+                          type="time"
+                          value={customTime}
+                          onChange={(e) => setCustomTime(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Info Card */}
                 <div className="bg-purple-50 rounded-2xl p-5 mb-6">
@@ -185,7 +252,7 @@ function ReminderContent() {
               <div className="px-6 pb-8">
                 <button
                   onClick={handleSetReminder}
-                  disabled={!selectedTime || loading || saving}
+                  disabled={!selectedTime || loading || saving || (selectedTime === "custom" && (!customDate || !customTime))}
                   className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl py-4 shadow-lg shadow-purple-200 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
                   {saving ? (
