@@ -83,16 +83,6 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
   };
 
   // Test notification function
-  const handleTestNotification = () => {
-    if (permission === 'granted') {
-      showNotification('🔔 Test Notification', {
-        body: 'This is a test notification. If you see this, notifications are working perfectly!',
-        icon: '🔔',
-      });
-    } else {
-      alert('Please enable notifications first');
-    }
-  };
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50 to-white">
@@ -156,14 +146,6 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
               <Bell className="w-4 h-4" />
               <span>My Reminders</span>
             </button>
-            {permission === 'granted' && (
-              <button
-                onClick={handleTestNotification}
-                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 transition-colors active:scale-95"
-              >
-                Test 🔔
-              </button>
-            )}
           </div>
         )}
       </div>
