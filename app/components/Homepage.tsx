@@ -81,7 +81,16 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
     }
     setShowNotificationBanner(false);
   };
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  
+  if (hour >= 5 && hour < 12) return { greeting: "Good Morning", emoji: "☀️" };
+  if (hour >= 12 && hour < 17) return { greeting: "Good Afternoon", emoji: "🌤️" };
+  if (hour >= 17 && hour < 21) return { greeting: "Good Evening", emoji: "🌆" };
+  return { greeting: "Good Night", emoji: "🌙" };
+};
 
+const { greeting, emoji } = getGreeting();
   // Test notification function
 
   return (
@@ -129,12 +138,12 @@ function filterSubjectsByToday(subjects: Subject[]): Subject[] {
           </div>
         </div>
         {/* Only show greeting for existing users */}
-        {!isNewUser && (
-          <>
-            <h1 className="text-3xl text-gray-900 mb-1">Good Morning</h1>
-            <p className="text-gray-500">Ready to record knowledge?</p>
-          </>
-        )}
+      {!isNewUser && (
+  <>
+    <h1 className="text-3xl text-gray-900 mb-1">{emoji} {greeting}</h1>
+    <p className="text-gray-500">Ready to record knowledge?</p>
+  </>
+)}
         
         {/* My Reminders Link - Only show for existing users */}
         {!isNewUser && (
