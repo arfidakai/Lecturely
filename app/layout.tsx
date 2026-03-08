@@ -1,5 +1,6 @@
 import './globals.css'
 import { AuthProvider } from './contexts/AuthContext'
+import { LanguageProvider } from './contexts/LanguageContext'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -42,7 +43,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className="font-sans antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   )
