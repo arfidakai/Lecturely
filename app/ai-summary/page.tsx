@@ -4,12 +4,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Loader2, Download, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { fetchWithAuth } from "../lib/fetch-with-auth";
+import { useLanguage } from "../contexts/LanguageContext";
 
 function AISummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recordingId = searchParams.get("recordingId");
   const subjectId = searchParams.get("subjectId");
+  const { t } = useLanguage();
 
   const [summary, setSummary] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -17,18 +19,18 @@ function AISummaryContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!recordingId) {
-      setError("Recording ID not found");
-      setIsLoading(false);
-      return;
-    }
+      if (!recordingId) {
+        setError(t.common.failed);
+        setIsLoading(false);
+        return;
+      }
 
     checkAndGenerateSummary();
   }, [recordingId]);
 
   const checkAndGenerateSummary = async () => {
     try {
-      const checkResponse = await fetchWithAuth(`/api/summary?recordingId=${recordingId}`, {
+        const checkResponse = await fetchWithAuth(`/api/summary?recordingId=${recordingId}`, {
         method: 'GET',
       });
       
@@ -39,11 +41,11 @@ function AISummaryContent() {
       } else if (checkResponse.status === 404) {
         await generateSummary();
       } else {
-        throw new Error('Failed to check summary');
+          throw new Error(t.common.failed);
       }
     } catch (error) {
       console.error('Error checking summary:', error);
-      setError('Failed to load summary. Please try again.');
+        setError(t.common.failed);
       setIsLoading(false);
     }
   };
@@ -59,14 +61,14 @@ function AISummaryContent() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate summary');
+          throw new Error(t.common.failed);
       }
 
       const data = await response.json();
       setSummary(data.summary.content);
     } catch (error) {
       console.error('Error generating summary:', error);
-      setError('Failed to generate summary. Please try again.');
+        setError(t.common.failed);
     } finally {
       setIsLoading(false);
       setIsGenerating(false);
@@ -77,7 +79,7 @@ function AISummaryContent() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Lecture Summary',
+            title: t.aiSummary.title,
           text: summary,
         });
       } catch (error) {
@@ -85,7 +87,7 @@ function AISummaryContent() {
       }
     } else {
       navigator.clipboard.writeText(summary);
-      alert('Summary copied to clipboard!');
+        alert(t.common.copied);
     }
   };
 
@@ -115,9 +117,9 @@ function AISummaryContent() {
                 <ChevronLeft className="w-6 h-6 text-gray-700" />
               </button>
               <div className="flex-1">
-                <h1 className="text-xl text-gray-900">AI Summary</h1>
+               <h1 className="text-xl text-gray-900">{t.aiSummary.title}</h1>
                 <p className="text-xs text-gray-500">
-                  {isGenerating ? 'Generating...' : 'Powered by Groq AI'}
+                    {isGenerating ? t.common.generating : t.common.poweredBy}
                 </p>
               </div>
               {!isLoading && !error && (
@@ -145,23 +147,23 @@ function AISummaryContent() {
               <div className="h-full flex flex-col items-center justify-center">
                 <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
                 <p className="text-gray-500 text-center">
-                  {isGenerating ? 'Generating AI summary...' : 'Loading summary...'}
+                   {isGenerating ? t.common.generating : t.aiSummary.checkingSummary}
                 </p>
                 <p className="text-xs text-gray-400 text-center mt-2">
-                  This may take a few seconds
+                  {t.aiSummary.takeFewSeconds}
                 </p>
               </div>
             ) : error ? (
               <div className="h-full flex flex-col items-center justify-center">
                 <div className="text-red-500 mb-4 text-center">
-                  <p className="font-medium">Error</p>
+                  <p className="font-medium">{t.common.error}</p>
                   <p className="text-sm">{error}</p>
                 </div>
                 <button
                   onClick={() => router.back()}
                   className="px-4 py-2 bg-purple-500 text-white rounded-xl"
                 >
-                  Go Back
+                    {t.common.goBack}
                 </button>
               </div>
             ) : (
@@ -178,7 +180,7 @@ function AISummaryContent() {
             <div className="px-6 pb-6">
               <div className="bg-purple-50 rounded-2xl p-4 text-center">
                 <p className="text-xs text-purple-700">
-                  ✨ AI-generated summary • Review for accuracy
+                    {t.common.aiBanner}
                 </p>
               </div>
             </div>

@@ -6,12 +6,15 @@ import { motion } from "framer-motion";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
 import { fetchWithAuthFormData } from "../lib/fetch-with-auth";
+import { useLanguage } from "../contexts/LanguageContext";
+
 
 function RecordingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId");
   const [subject, setSubject] = useState<Subject | null>(null);
+  const { t } = useLanguage();
 
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -101,8 +104,8 @@ function RecordingContent() {
         console.log('Recording started');
       } catch (err) {
         console.error('Recording error:', err);
-        setError('Failed to access microphone');
-        alert('Cannot access microphone. Please check permissions.');
+        setError(t.common.failed);
+        alert(t.common.failed);
       }
     } else {
       console.log('Stopping recording...');
@@ -117,7 +120,7 @@ function RecordingContent() {
           
           // Validasi: blob harus ada dan minimal 1KB
           if (blob.size < 1000) {
-            setError('Audio recording failed or too short. Please try again.');
+            setError(t.common.failed);
             setIsSaving(false);
             setIsRecording(false);
             if (streamRef.current) {
@@ -125,10 +128,9 @@ function RecordingContent() {
             }
             return;
           }
-          
           // Validasi: durasi minimal 1 detik
           if (duration < 1) {
-            setError('Recording too short. Please record at least 1 second.');
+            setError(t.common.failed);
             setIsSaving(false);
             setIsRecording(false);
             if (streamRef.current) {
@@ -144,7 +146,7 @@ function RecordingContent() {
             const formData = new FormData();
             formData.append('audio', blob, 'recording.webm');
             if (!subject) {
-              setError('Subject belum dimuat. Silakan coba lagi.');
+              setError(t.recording.loadingSubject);
               setIsSaving(false);
               setIsRecording(false);
               return;
@@ -156,7 +158,7 @@ function RecordingContent() {
             const response = await fetchWithAuthFormData('/api/recordings', formData);
 
             if (!response.ok) {
-              throw new Error('Failed to save recording');
+              throw new Error(t.common.failed);
             }
 
             const { recording } = await response.json();
@@ -169,7 +171,7 @@ function RecordingContent() {
             router.push(`/post-record?duration=${duration}&subjectId=${subject.id}&recordingId=${recording.id}`);
           } catch (error) {
             console.error('Error saving recording:', error);
-            setError('Failed to save recording. Please try again.');
+            setError(t.common.failed);
             setIsSaving(false);
             setIsRecording(false);
           }
@@ -197,7 +199,7 @@ function RecordingContent() {
       return;
     }
 
-    const confirmed = confirm('Are you sure you want to cancel this recording? It will not be saved.');
+    const confirmed = confirm(t.recording.deleteConfirm);
     
     if (!confirmed) return;
 
@@ -267,7 +269,7 @@ function RecordingContent() {
             {/* Input Judul/Materi */}
             {!isRecording && (
               <div className="w-full max-w-md mb-8">
-                <label htmlFor="judul" className="block text-sm font-medium text-gray-700 mb-2">Judul/Materi Perkuliahan</label>
+                <label htmlFor="judul" className="block text-sm font-medium text-gray-700 mb-2">{t.common.subject}</label>
                 <input
                   id="judul"
                   type="text"
@@ -280,7 +282,9 @@ function RecordingContent() {
                   autoFocus
                 />
                 {titleTouched && !title.trim() && (
-                  <div className="text-xs text-red-500 mt-2">Judul/materi wajib diisi</div>
+                  <div className="text-sm text-purple-600 mb-4 text-center px-4">
+  {t.recording.processing}
+</div>
                 )}
               </div>
             )}
@@ -367,12 +371,14 @@ function RecordingContent() {
 
             {isSaving && (
               <div className="text-sm text-purple-600 mb-4 text-center px-4">
-                Saving recording...
+                {t.common.saving}
               </div>
             )}
 
             <div className="text-sm text-gray-500 mb-8">
-              {isRecording ? (isPaused ? "Paused" : "Recording...") : "Isi judul materi lalu tap untuk mulai"}
+            {isRecording 
+  ? (isPaused ? t.recording.paused : t.recording.recording) 
+  : t.recording.startRecording}
             </div>
 
             {/* Action Buttons */}
@@ -405,7 +411,7 @@ function RecordingContent() {
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
                   <X className="w-5 h-5" />
-                  <span>Cancel</span>
+                  <span>{t.common.cancel}</span>
                 </button>
               </div>
             )}
@@ -417,6 +423,7 @@ function RecordingContent() {
 }
 
 export default function RecordingPage() {
+  const { t } = useLanguage();
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><div className="animate-pulse text-gray-500">Loading...</div></div>}>
       <RecordingContent />
