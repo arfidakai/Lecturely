@@ -5,6 +5,7 @@ import { ChevronLeft, Bell, Trash2, Clock, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Swal from "sweetalert2";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface Reminder {
   id: string;
@@ -24,6 +25,7 @@ interface Reminder {
 
 export default function MyRemindersPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -90,10 +92,11 @@ export default function MyRemindersPage() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMs < 0) return "Past due";
-    if (diffHours < 1) return "Less than 1 hour";
-    if (diffHours < 24) return `In ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
-    if (diffDays < 7) return `In ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+   if (diffMs < 0) return t.reminders.pastDue;
+if (diffHours < 1) return t.reminders.lessThanHour;
+if (diffHours < 24) return t.reminders.inXhours.replace('{hours}', diffHours.toString());
+if (diffDays < 7) return t.reminders.inXdays.replace('{days}', diffDays.toString());
+
     return date.toLocaleDateString();
   };
 
@@ -109,8 +112,8 @@ export default function MyRemindersPage() {
             <ChevronLeft className="w-6 h-6 text-gray-700" />
           </button>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">My Reminders</h1>
-            <p className="text-sm text-gray-500">Review schedule for your notes</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t.reminders.title}</h1>
+<p className="text-sm text-gray-500">{t.aiSummary.reviewBanner}</p>
           </div>
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-3 rounded-2xl shadow-lg">
             <Bell className="w-6 h-6 text-white" />
@@ -119,14 +122,12 @@ export default function MyRemindersPage() {
 
         {/* Reminder List */}
         {loading ? (
-          <div className="text-center py-8 text-gray-500">Loading reminders...</div>
+        <div className="text-center py-8 text-gray-500">{t.reminders.loadingReminders}</div>
         ) : reminders.length === 0 ? (
           <div className="text-center py-12">
             <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-2">No reminders set</p>
-            <p className="text-xs text-gray-400">
-              Set reminders from your recordings to review later
-            </p>
+            <p className="text-gray-500 mb-2">{t.reminders.noReminders}</p>
+<p className="text-xs text-gray-400">{t.reminders.noRemindersDesc}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -170,7 +171,7 @@ export default function MyRemindersPage() {
                   onClick={() => handleDeleteReminder(reminder.id)}
                   disabled={deletingId === reminder.id}
                   className="absolute top-3 right-3 p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-600 transition-colors"
-                  title="Delete reminder"
+                  title={t.common.delete}
                 >
                   {deletingId === reminder.id ? '⏳' : <Trash2 className="w-4 h-4" />}
                 </button>

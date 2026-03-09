@@ -5,11 +5,13 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Loader2, Save, Bell } from "lucide-react";
 import { fetchWithAuth } from "../../../lib/fetch-with-auth";
 import Swal from "sweetalert2";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export default function AiSummaryPage() {
   const router = useRouter();
   const params = useParams();
   const { recordingId, subjectId } = params as { recordingId: string; subjectId: string };
+  const { t } = useLanguage();
 
   const [summary, setSummary] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +24,7 @@ export default function AiSummaryPage() {
 
   useEffect(() => {
     if (!recordingId) {
-      setError("Recording ID not found");
+     setError(t.common.failed);
       setIsLoading(false);
       return;
     }
@@ -72,7 +74,7 @@ export default function AiSummaryPage() {
       
       await Swal.fire({
         icon: 'success',
-        title: 'Already Saved!',
+        title: t.common.save,
         text: 'Your summary is safely stored in the database',
         timer: 2000,
         showConfirmButton: false,
@@ -104,8 +106,8 @@ export default function AiSummaryPage() {
     if (!reminderDate || !reminderTime) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Missing Information',
-        text: 'Please select date and time for the reminder',
+        title: t.aiSummary.missingInfoTitle,
+        text: t.aiSummary.missingInfo,
       });
       return;
     }
@@ -125,8 +127,8 @@ export default function AiSummaryPage() {
         setShowReminderModal(false);
         await Swal.fire({
           icon: 'success',
-          title: 'Reminder Set!',
-          text: `You'll be reminded on ${new Date(reminderDateTime).toLocaleString()}`,
+          title: t.aiSummary.reminderSet,
+          text: `${t.aiSummary.reminderSetDesc} ${new Date(reminderDateTime).toLocaleString()}`,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -136,8 +138,8 @@ export default function AiSummaryPage() {
     } catch (error) {
       await Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: 'Failed to create reminder',
+        title: t.aiSummary.reminderError,
+        text: t.aiSummary.reminderError,
       });
     }
   };
@@ -156,7 +158,7 @@ export default function AiSummaryPage() {
                 <ChevronLeft className="w-6 h-6 text-gray-700" />
               </button>
               <div className="flex-1">
-                <h1 className="text-xl text-gray-900">AI Summary</h1>
+                <h1 className="text-xl text-gray-900">{t.aiSummary.title}</h1>
               </div>
               {!isLoading && !error && (
                 <button
@@ -174,20 +176,20 @@ export default function AiSummaryPage() {
             {isLoading ? (
               <div className="h-full flex flex-col items-center justify-center">
                 <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
-                <p className="text-gray-500">Loading summary...</p>
+                <p className="text-gray-500">{t.aiSummary.loading}</p>
               </div>
             ) : error ? (
               <div className="h-full flex flex-col items-center justify-center">
                 <div className="text-red-500 mb-4 text-center">
-                  <p className="font-medium">Error</p>
+                  <p className="font-medium">{t.common.error}</p>
                   <p className="text-sm">{error}</p>
                 </div>
-                <button
-                  onClick={() => router.back()}
-                  className="px-4 py-2 bg-purple-500 text-white rounded-xl"
-                >
-                  Go Back
-                </button>
+                  <button
+                    onClick={() => router.back()}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-xl"
+                  >
+                    {t.common.goBack}
+                  </button>
               </div>
             ) : (
               <div className="bg-gray-50 rounded-2xl p-6">
@@ -223,12 +225,12 @@ export default function AiSummaryPage() {
                   {isSaving ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Saving...
+                      {t.common.saving}
                     </>
                   ) : (
                     <>
                       <Save className="w-5 h-5" />
-                      Save Summary
+                      {t.aiSummary.save}
                     </>
                   )}
                 </button>
@@ -241,12 +243,12 @@ export default function AiSummaryPage() {
         {showReminderModal && (
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-200">
-              <h2 className="text-xl font-bold mb-4 text-gray-900">Set Reminder</h2>
+              <h2 className="text-xl font-bold mb-4 text-gray-900">{t.aiSummary.setReminder}</h2>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date
+                    {t.common.date}
                   </label>
                   <input
                     type="date"
@@ -258,7 +260,7 @@ export default function AiSummaryPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Time
+                    {t.common.time}
                   </label>
                   <input
                     type="time"
@@ -270,14 +272,14 @@ export default function AiSummaryPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Note (Optional)
+                    {t.common.note}
                   </label>
                   <textarea
                     value={reminderNote}
                     onChange={(e) => setReminderNote(e.target.value)}
                     rows={3}
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                    placeholder="Add a note for this reminder..."
+                    placeholder={t.common.note}
                   />
                 </div>
               </div>
@@ -287,13 +289,13 @@ export default function AiSummaryPage() {
                   onClick={() => setShowReminderModal(false)}
                   className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors active:scale-95"
                 >
-                  Cancel
+                  {t.common.cancel}
                 </button>
                 <button
                   onClick={handleCreateReminder}
                   className="flex-1 px-4 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors active:scale-95"
                 >
-                  Create Reminder
+                  {t.aiSummary.createReminder}
                 </button>
               </div>
             </div>

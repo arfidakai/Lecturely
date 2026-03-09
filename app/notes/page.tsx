@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface Recording {
   id: string;
@@ -13,6 +14,7 @@ interface Recording {
 }
 
 function NotesContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId");
@@ -47,11 +49,11 @@ function NotesContent() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-100 to-white py-8 px-2">
       <div className="max-w-md mx-auto w-full">
-        <h1 className="text-2xl font-bold mb-6 text-center">My Recordings</h1>
-        {loading && <div className="text-center py-8">Loading...</div>}
+        <h1 className="text-2xl font-bold mb-6 text-center">{t.notes.title}</h1>
+        {loading && <div className="text-center py-8">{t.notes.loadingRecordings}</div>}
         {error && <div className="text-center text-red-500 py-8">{error}</div>}
         {!loading && recordings.length === 0 && (
-          <div className="text-center text-gray-400 py-8">No recordings found.</div>
+          <div className="text-center text-gray-400 py-8">{t.notes.noRecordings}</div>
         )}
         <ul className="space-y-3">
           {recordings.map((rec) => (
@@ -62,11 +64,11 @@ function NotesContent() {
             >
               {/* Badge transcribed */}
               {rec.transcribed && (
-                <span className="absolute top-2 right-3 bg-purple-100 text-purple-600 text-[11px] px-2 py-0.5 rounded-full font-medium">✓ Transcribed</span>
+                <span className="absolute top-2 right-3 bg-purple-100 text-purple-600 text-[11px] px-2 py-0.5 rounded-full font-medium">{t.common.transcribed}</span>
               )}
               {/* Subject name only */}
               <span className="font-semibold text-base text-gray-900 mb-1 capitalize">
-                {rec.title || "Recording"}
+                {rec.title || t.common.recording}
               </span>
               {/* Date & duration row */}
               <div className="flex justify-between items-end w-full mt-1">
@@ -82,6 +84,7 @@ function NotesContent() {
 }
 
 export default function NotesPage() {
+  const { t } = useLanguage();
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><div className="text-center py-8">Loading...</div></div>}>
       <NotesContent />

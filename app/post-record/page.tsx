@@ -5,8 +5,11 @@ import { Clock, Calendar, CheckCircle, Save, Loader2, Trash2, X } from "lucide-r
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
+import { useLanguage } from "../contexts/LanguageContext";
 
-function PostRecordContent() {
+
+  function PostRecordContent() {
+  const {t} = useLanguage();  
   const router = useRouter();
   const searchParams = useSearchParams();
   const duration = parseInt(searchParams.get("duration") || "0");
@@ -134,14 +137,14 @@ function PostRecordContent() {
     }
   };
 
-  if (!subject) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
-        <Loader2 className="w-10 h-10 text-purple-500 animate-spin mr-3" />
-        <span className="text-gray-500 text-lg">Loading subject...</span>
-      </div>
-    );
-  }
+    if (!subject) {
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
+          <Loader2 className="w-10 h-10 text-purple-500 animate-spin mr-3" />
+          <span className="text-gray-500 text-lg">{t.recording.loadingSubject}</span>
+        </div>
+      );
+    }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
@@ -152,9 +155,9 @@ function PostRecordContent() {
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-full mb-6 shadow-lg shadow-purple-200">
               <CheckCircle className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-2xl text-gray-900 mb-2">Recording Complete!</h1>
+            <h1 className="text-2xl text-gray-900 mb-2">{t.recording.recordingComplete}</h1>
             <p className="text-sm text-gray-500 text-center">
-              Your lecture has been saved
+              {t.recording.lectureSaved}
             </p>
           </div>
 
@@ -242,7 +245,7 @@ function PostRecordContent() {
             </div>
 
             <p className="text-xs text-gray-400 text-center mt-6">
-              You can transcribe this recording anytime from your notes
+              {t.recording.youCanTranscribe}
             </p>
           </div>
         </div>
