@@ -153,7 +153,7 @@ const filterSubjectsByToday = (subjects: Subject[]) => {
     <div className="flex items-center justify-between mb-5">
       <div className="text-xs font-medium text-purple-400 tracking-wide uppercase">{today}</div>
       <div className="flex items-center gap-2">
-        {!isNewUser && (
+        {/* {!isNewUser && (
           <button
             onClick={() => setShowSearch(true)}
             className="p-2.5 bg-white rounded-full shadow-sm hover:shadow-md transition-all active:scale-95"
@@ -161,7 +161,7 @@ const filterSubjectsByToday = (subjects: Subject[]) => {
           >
             <Search className="w-4 h-4 text-purple-500" />
           </button>
-        )}
+        )} */}
         <LanguageToggle />
         <div className="relative">
           <button
