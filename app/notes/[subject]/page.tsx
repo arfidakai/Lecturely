@@ -6,7 +6,7 @@ import { getUUIDFromSlug } from "../../lib/subjectMapping";
 function isUUID(str: string) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 }
-import { ChevronLeft, Mic, Search, X } from "lucide-react";
+import { ChevronLeft, Mic, Search, X, Plus } from "lucide-react";
 
 interface Recording {
   id: string;
@@ -24,6 +24,11 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNewNoteModal, setShowNewNoteModal] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
+  const [newNoteContent, setNewNoteContent] = useState("");
+  const [creatingNote, setCreatingNote] = useState(false);
+  const [subjectId, setSubjectId] = useState<string>("");
 
   useEffect(() => {
     params.then(p => setSubjectSlug(p.subject));
@@ -37,21 +42,22 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
       setError(null);
 
 
-      let subjectId = "";
+      let resolvedSubjectId = "";
       if (isUUID(subjectSlug)) {
-        subjectId = subjectSlug;
+        resolvedSubjectId = subjectSlug;
       } else {
         const uuid = getUUIDFromSlug(subjectSlug);
         if (uuid) {
-          subjectId = uuid;
+          resolvedSubjectId = uuid;
         } else {
           setError("Subject not found");
           setLoading(false);
           return;
         }
       }
+      setSubjectId(resolvedSubjectId);
 
-      if (!subjectId) {
+      if (!resolvedSubjectId) {
         setError("Subject not found");
         setLoading(false);
         return;
@@ -60,7 +66,7 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
       const { data, error } = await supabase
         .from("recordings")
         .select("id,subject_id,title,duration,date,transcribed")
-        .eq("subject_id", subjectId)
+        .eq("subject_id", resolvedSubjectId)
         .order("date", { ascending: false });
 
       if (error) {
@@ -73,6 +79,51 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
 
     fetchRecordings();
   }, [subjectSlug]);
+
+  const handleCreateNote = async () => {
+    if (!newNoteTitle.trim()) {
+      alert("Note title cannot be empty");
+      return;
+    }
+
+    setCreatingNote(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("User not authenticated");
+        setCreatingNote(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("notes")
+        .insert([
+          {
+            user_id: user.id,
+            subject_id: subjectId,
+            title: newNoteTitle,
+            content: newNoteContent,
+            created_at: new Date().toISOString(),
+          }
+        ])
+        .select();
+
+      if (error) {
+        alert("Failed to create note: " + error.message);
+      } else {
+        setNewNoteTitle("");
+        setNewNoteContent("");
+        setShowNewNoteModal(false);
+        if (data && data[0]) {
+          router.push(`/note-detail?noteId=${data[0].id}`);
+        }
+      }
+    } catch (err) {
+      alert("Error creating note");
+    } finally {
+      setCreatingNote(false);
+    }
+  };
 
   const getSubjectName = (slug: string) => {
     // TODO: Optionally fetch subject name from DB if UUID
@@ -107,24 +158,31 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
               {getSubjectName(subjectSlug)}
             </h1>
           </div>
-          {/* Add Record Button */}
-          <button
-            onClick={() => {
-              // If subjectSlug is already a UUID, use it directly
-              // Otherwise, convert slug to UUID
-              const subjectId = isUUID(subjectSlug) 
-                ? subjectSlug 
-                : getUUIDFromSlug(subjectSlug);
-              
-              if (subjectId) {
-                router.push(`/recording?subjectId=${subjectId}`);
-              }
-            }}
-            className="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-purple-700 transition-colors active:scale-95"
-            title="Start New Recording"
-          >
-            <Mic className="w-6 h-6" />
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const resolvedSubjectId = isUUID(subjectSlug) 
+                  ? subjectSlug 
+                  : getUUIDFromSlug(subjectSlug);
+                
+                if (resolvedSubjectId) {
+                  router.push(`/recording?subjectId=${resolvedSubjectId}`);
+                }
+              }}
+              className="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-purple-700 transition-colors active:scale-95"
+              title="Start New Recording"
+            >
+              <Mic className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => setShowNewNoteModal(true)}
+              className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors active:scale-95"
+              title="Create New Note"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -191,6 +249,72 @@ export default function SubjectNotesPage({ params }: { params: Promise<{ subject
             </li>
           ))}
         </ul>
+
+        {/* New Note Modal */}
+        {showNewNoteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">Create New Note</h2>
+                  <button
+                    onClick={() => setShowNewNoteModal(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Note Title
+                    </label>
+                    <input
+                      type="text"
+                      value={newNoteTitle}
+                      onChange={(e) => setNewNoteTitle(e.target.value)}
+                      placeholder="Enter note title..."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      disabled={creatingNote}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Note Content
+                    </label>
+                    <textarea
+                      value={newNoteContent}
+                      onChange={(e) => setNewNoteContent(e.target.value)}
+                      placeholder="Enter note content..."
+                      rows={6}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      disabled={creatingNote}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <button
+                      onClick={() => setShowNewNoteModal(false)}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                      disabled={creatingNote}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateNote}
+                      className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                      disabled={creatingNote}
+                    >
+                      {creatingNote ? "Creating..." : "Create"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
