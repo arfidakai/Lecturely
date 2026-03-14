@@ -51,6 +51,8 @@ export const translations = {
     home: {
       startRecording: "Start Recording",
       myReminders: "My Reminders",
+      viewReminders: "View your reminders",
+      viewRemindersDesc: "Stay on top of your study schedule",
       todaySubjects: "Today's Subjects",
       upcoming: "Upcoming",
       tomorrow: "Tomorrow",
@@ -274,6 +276,8 @@ export const translations = {
     home: {
       startRecording: "Mulai Rekam",
       myReminders: "Pengingat Saya",
+      viewReminders: "Lihat pengingatmu",
+      viewRemindersDesc: "Tetap on track dengan jadwal belajarmu",
       todaySubjects: "Mata Kuliah Hari Ini",
       upcoming: "Akan Datang",
       tomorrow: "Besok",

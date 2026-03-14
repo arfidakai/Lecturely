@@ -75,8 +75,8 @@
     const handleEnableNotifications = async () => {
       const granted = await requestPermission();
       if (granted) {
-        showNotification('Notifications Enabled! 🎉', {
-          body: 'You\'ll now receive reminder notifications',
+        showNotification(`${t.home.enableBtn}! 🎉`, {
+          body: t.home.notificationDesc,
           icon: '🎉',
         });
       }
@@ -85,10 +85,10 @@
   const getGreeting = () => {
     const hour = new Date().getHours();
     
-    if (hour >= 5 && hour < 12) return { greeting: "Good Morning", emoji: "☀️" };
-    if (hour >= 12 && hour < 17) return { greeting: "Good Afternoon", emoji: "🌤️" };
-    if (hour >= 17 && hour < 21) return { greeting: "Good Evening", emoji: "🌆" };
-    return { greeting: "Good Night", emoji: "🌙" };
+    if (hour >= 5 && hour < 12) return { greeting: t.greeting.morning, emoji: "☀️" };
+    if (hour >= 12 && hour < 17) return { greeting: t.greeting.afternoon, emoji: "🌤️" };
+    if (hour >= 17 && hour < 21) return { greeting: t.greeting.evening, emoji: "🌆" };
+    return { greeting: t.greeting.night, emoji: "🌙" };
   };
 
   //name parsing for greeting
@@ -140,9 +140,17 @@
       )
     );
 
-    const dayLabel = minDiff === 1 ? "Tomorrow" : dayNames[nearestDayIndex];
+    return { subjects: nearestSubjects, nearestDayIndex, minDiff };
+  };
 
-    return { subjects: nearestSubjects, dayLabel };
+  const getLocalizedDayLabel = (dayIndex: number) => {
+    const now = new Date();
+    const diff = (dayIndex - now.getDay() + 7) % 7 || 7;
+    const targetDate = new Date(now);
+    targetDate.setDate(now.getDate() + diff);
+    return targetDate.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
+      weekday: "long",
+    });
   };
 
     return (
@@ -198,7 +206,7 @@
       {!isNewUser && (
         <div className="mb-5">
           <p className="text-xs font-semibold text-purple-400 tracking-widest uppercase mb-1">
-            Hi, {firstName} 
+            {t.greeting.hi}, {firstName} 
           </p>
           <h1 className="text-2xl font-bold text-gray-900 leading-tight">
             {emoji} {greeting}
@@ -274,13 +282,13 @@
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
            {/* <Bell className="w-4 h-4 text-purple-500" /> */}
-          <h2 className="text-lg text-gray-900">My Reminders</h2>
+          <h2 className="text-lg text-gray-900">{t.home.myReminders}</h2>
         </div>
         <button
           onClick={() => router.push('/my-reminders')}
           className="text-sm text-purple-500"
         >
-          See All
+          {t.common.seeAll}
         </button>
       </div>
       <button
@@ -291,8 +299,8 @@
           <Bell className="w-5 h-5 text-purple-500" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-900">View your reminders</p>
-          <p className="text-xs text-gray-400">Stay on top of your study schedule</p>
+          <p className="text-sm font-medium text-gray-900">{t.home.viewReminders}</p>
+          <p className="text-xs text-gray-400">{t.home.viewRemindersDesc}</p>
         </div>
         <span className="text-purple-400 text-lg">›</span>
       </button>
@@ -433,14 +441,20 @@
       const hasToday = todaySubjects.length > 0;
       const upcoming = !hasToday ? getNextScheduledDay(subjects) : null;
       const displaySubjects = hasToday ? todaySubjects : upcoming?.subjects ?? [];
-      const sectionTitle = hasToday ? "Today's Subjects" : 
-                          upcoming ? `Upcoming · ${upcoming.dayLabel}` : null;
+      const dayLabel = upcoming
+        ? (upcoming.minDiff === 1 ? t.home.tomorrow : getLocalizedDayLabel(upcoming.nearestDayIndex))
+        : "";
+      const sectionTitle = hasToday
+        ? t.home.todaySubjects
+        : upcoming
+          ? `${t.home.upcoming} · ${dayLabel}`
+          : null;
 
       return (
         <>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg text-gray-900">
-              {sectionTitle ?? "Subjects"}
+              {sectionTitle ?? t.home.todaySubjects}
             </h2>
             <button
               onClick={() => router.push('/all-subjects')}
