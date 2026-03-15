@@ -4,7 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
 import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Plus } from "lucide-react";
 
 export default function AiSummaryDetailPage() {
   const router = useRouter();
@@ -15,6 +15,8 @@ export default function AiSummaryDetailPage() {
   const [summaries, setSummaries] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recordingData, setRecordingData] = useState<any>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   useEffect(() => {
     console.log("[AI Summary Detail] recordingId:", recordingId);
@@ -23,11 +25,26 @@ export default function AiSummaryDetailPage() {
       setIsLoading(false);
       return;
     }
-    fetchSummary();
+    fetchSummaryAndRecording();
   }, [recordingId]);
 
-  const fetchSummary = async () => {
+  const fetchSummaryAndRecording = async () => {
     try {
+      // Fetch recording data for subject_id
+      const { data: recData, error: recError } = await supabase
+        .from("recordings")
+        .select("id, subject_id, title")
+        .eq("id", recordingId)
+        .single();
+
+      if (recError || !recData) {
+        setError(t.common.failed);
+        setIsLoading(false);
+        return;
+      }
+      setRecordingData(recData);
+
+      // Fetch summaries
       const { data, error } = await supabase
         .from("summaries")
         .select("content")
@@ -55,6 +72,52 @@ export default function AiSummaryDetailPage() {
     }
   };
 
+  const handleSaveAsNote = async () => {
+    if (!recordingData || !summaries.length) {
+      alert(t.aiSummary.addToNotesError);
+      return;
+    }
+
+    setIsSavingNote(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("User not authenticated");
+        return;
+      }
+
+      // Combine all summaries into one note
+      const combinedContent = summaries.join("\n\n---\n\n");
+      const noteTitle = `Summary: ${recordingData.title || "Recording"}`;
+
+      const { data, error } = await supabase
+        .from("notes")
+        .insert([
+          {
+            user_id: user.id,
+            subject_id: recordingData.subject_id,
+            title: noteTitle,
+            content: combinedContent,
+            created_at: new Date().toISOString(),
+          }
+        ])
+        .select();
+
+      if (error) {
+        alert(t.aiSummary.addToNotesError + ": " + error.message);
+      } else {
+        // Show success and redirect to note detail
+        if (data && data[0]) {
+          router.push(`/note-detail?noteId=${data[0].id}`);
+        }
+      }
+    } catch (err) {
+      alert(t.aiSummary.addToNotesError);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
       <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
@@ -71,6 +134,14 @@ export default function AiSummaryDetailPage() {
               <div className="flex-1">
                 <h1 className="text-xl text-gray-900">{t.aiSummary.title}</h1>
               </div>
+              <button
+                onClick={handleSaveAsNote}
+                disabled={isSavingNote || !summaries.length}
+                className="p-2 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 active:scale-95"
+                title={t.aiSummary.addToNotes}
+              >
+                <Plus className="w-5 h-5 text-purple-600" />
+              </button>
             </div>
           </div>
 

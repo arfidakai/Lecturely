@@ -160,6 +160,10 @@ export const translations = {
       missingInfoTitle: "Missing Information",
       reminderError: "Failed to create reminder",
       reviewBanner: "Review schedule for your notes",
+      addToNotes: "Save as Note",
+      addingToNotes: "Saving...",
+      addedToNotes: "Saved as note!",
+      addToNotesError: "Failed to save as note",
     },
 
     // === MY REMINDERS ===
@@ -385,6 +389,10 @@ export const translations = {
       missingInfoTitle: "Informasi Kurang",
       reminderError: "Gagal membuat pengingat",
       reviewBanner: "Jadwal ulasan untuk catatanmu",
+      addToNotes: "Simpan sebagai Catatan",
+      addingToNotes: "Menyimpan...",
+      addedToNotes: "Tersimpan sebagai catatan!",
+      addToNotesError: "Gagal menyimpan sebagai catatan",
     },
 
     // === MY REMINDERS ===
