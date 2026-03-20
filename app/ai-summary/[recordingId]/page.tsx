@@ -4,7 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
 import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Copy, Check } from "lucide-react";
 
 export default function AiSummaryDetailPage() {
   const router = useRouter();
@@ -17,6 +17,7 @@ export default function AiSummaryDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [recordingData, setRecordingData] = useState<any>(null);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
   useEffect(() => {
     console.log("[AI Summary Detail] recordingId:", recordingId);
@@ -69,6 +70,18 @@ export default function AiSummaryDetailPage() {
       setError(t.common.failed);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCopySummary = async () => {
+    if (!summaries.length) return;
+    try {
+      const textToCopy = summaries.join("\n\n---\n\n");
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedToClipboard(true);
+      setTimeout(() => setCopiedToClipboard(false), 2000);
+    } catch (err) {
+      alert("Failed to copy");
     }
   };
 
@@ -141,6 +154,18 @@ export default function AiSummaryDetailPage() {
                 title={t.aiSummary.addToNotes}
               >
                 <Plus className="w-5 h-5 text-purple-600" />
+              </button>
+              <button
+                onClick={handleCopySummary}
+                disabled={!summaries.length}
+                className="p-2 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 active:scale-95"
+                title="Copy to clipboard"
+              >
+                {copiedToClipboard ? (
+                  <Check className="w-5 h-5 text-green-600" />
+                ) : (
+                  <Copy className="w-5 h-5 text-purple-600" />
+                )}
               </button>
             </div>
           </div>
