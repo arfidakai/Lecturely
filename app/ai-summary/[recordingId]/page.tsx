@@ -4,7 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
 import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2, Plus, Copy, Check } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Copy, Check, Star } from "lucide-react";
 
 export default function AiSummaryDetailPage() {
   const router = useRouter();
@@ -18,6 +18,14 @@ export default function AiSummaryDetailPage() {
   const [recordingData, setRecordingData] = useState<any>(null);
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [isImportant, setIsImportant] = useState(false);
+  const [isMarkingImportant, setIsMarkingImportant] = useState(false);
+  const [summaryId, setSummaryId] = useState<string | null>(null);
+  const [highlightColor, setHighlightColor] = useState<string>("none");
+  const [isUpdatingColor, setIsUpdatingColor] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const colors = ["none", "yellow", "orange", "red", "green", "blue", "purple", "pink"];
 
   useEffect(() => {
     console.log("[AI Summary Detail] recordingId:", recordingId);
@@ -48,7 +56,7 @@ export default function AiSummaryDetailPage() {
       // Fetch summaries
       const { data, error } = await supabase
         .from("summaries")
-        .select("content")
+        .select("id, content, is_important, highlight_color")
         .eq("recording_id", recordingId);
       console.log("[AI Summary Detail] Supabase data:", data, "error:", error);
       if (error || !data || data.length === 0) {
@@ -56,7 +64,7 @@ export default function AiSummaryDetailPage() {
         setSummaries([]);
         return;
       }
-      // Filter out empty content
+      // Filter out empty content and get first summary's id and importance status
       const validSummaries = data
         .map((row: any) => row.content)
         .filter((c: string) => c && c.trim() !== "");
@@ -66,6 +74,9 @@ export default function AiSummaryDetailPage() {
         return;
       }
       setSummaries(validSummaries);
+      setSummaryId(data[0].id);
+      setIsImportant(data[0].is_important || false);
+      setHighlightColor(data[0].highlight_color || "none");
     } catch (error) {
       setError(t.common.failed);
     } finally {
@@ -82,6 +93,55 @@ export default function AiSummaryDetailPage() {
       setTimeout(() => setCopiedToClipboard(false), 2000);
     } catch (err) {
       alert("Failed to copy");
+    }
+  };
+
+  const handleMarkImportant = async () => {
+    if (!summaryId) return;
+    setIsMarkingImportant(true);
+    try {
+      const newImportantStatus = !isImportant;
+      const { error } = await supabase
+        .from("summaries")
+        .update({ is_important: newImportantStatus })
+        .eq("id", summaryId);
+
+      if (error) {
+        alert("Failed to update");
+      } else {
+        setIsImportant(newImportantStatus);
+        // Show toast message
+        const message = newImportantStatus
+          ? t.aiSummary.markedImportant
+          : t.aiSummary.removedFromImportant;
+        alert(message);
+      }
+    } catch (err) {
+      alert("Failed to update");
+    } finally {
+      setIsMarkingImportant(false);
+    }
+  };
+
+  const handleHighlightColorChange = async (color: string) => {
+    if (!summaryId) return;
+    setIsUpdatingColor(true);
+    try {
+      const { error } = await supabase
+        .from("summaries")
+        .update({ highlight_color: color })
+        .eq("id", summaryId);
+
+      if (error) {
+        alert("Failed to update color");
+      } else {
+        setHighlightColor(color);
+        setShowColorPicker(false);
+      }
+    } catch (err) {
+      alert("Failed to update color");
+    } finally {
+      setIsUpdatingColor(false);
     }
   };
 
@@ -156,6 +216,18 @@ export default function AiSummaryDetailPage() {
                 <Plus className="w-5 h-5 text-purple-600" />
               </button>
               <button
+                onClick={handleMarkImportant}
+                disabled={isMarkingImportant || !summaries.length}
+                className="p-2 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 active:scale-95"
+                title={isImportant ? t.aiSummary.removeFromImportant : t.aiSummary.markImportant}
+              >
+                <Star
+                  className={`w-5 h-5 transition-colors ${
+                    isImportant ? "fill-yellow-400 text-yellow-400" : "text-gray-400"
+                  }`}
+                />
+              </button>
+              <button
                 onClick={handleCopySummary}
                 disabled={!summaries.length}
                 className="p-2 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 active:scale-95"
@@ -167,6 +239,67 @@ export default function AiSummaryDetailPage() {
                   <Copy className="w-5 h-5 text-purple-600" />
                 )}
               </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  disabled={!summaries.length}
+                  className="p-2 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 active:scale-95"
+                  title={t.aiSummary.highlightColor}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 border-gray-300 ${
+                      highlightColor === "yellow"
+                        ? "bg-yellow-300"
+                        : highlightColor === "orange"
+                        ? "bg-orange-300"
+                        : highlightColor === "red"
+                        ? "bg-red-300"
+                        : highlightColor === "green"
+                        ? "bg-green-300"
+                        : highlightColor === "blue"
+                        ? "bg-blue-300"
+                        : highlightColor === "purple"
+                        ? "bg-purple-300"
+                        : highlightColor === "pink"
+                        ? "bg-pink-300"
+                        : "bg-gray-200"
+                    }`}
+                  />
+                </button>
+                {showColorPicker && (
+                  <div className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg p-3 z-50 grid grid-cols-4 gap-2 w-40">
+                    {colors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => handleHighlightColorChange(color)}
+                        disabled={isUpdatingColor}
+                        className="relative group"
+                        title={t.aiSummary.colors[color as keyof typeof t.aiSummary.colors]}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                            color === "yellow"
+                              ? "bg-yellow-300 border-yellow-400"
+                              : color === "orange"
+                              ? "bg-orange-300 border-orange-400"
+                              : color === "red"
+                              ? "bg-red-300 border-red-400"
+                              : color === "green"
+                              ? "bg-green-300 border-green-400"
+                              : color === "blue"
+                              ? "bg-blue-300 border-blue-400"
+                              : color === "purple"
+                              ? "bg-purple-300 border-purple-400"
+                              : color === "pink"
+                              ? "bg-pink-300 border-pink-400"
+                              : "bg-gray-200 border-gray-300"
+                          } ${highlightColor === color ? "ring-2 ring-offset-1 ring-gray-400" : ""}`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
