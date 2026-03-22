@@ -180,6 +180,11 @@ export const translations = {
         purple: "Purple",
         pink: "Pink",
       },
+      selectTextToHighlight: "Select text and choose a color to highlight",
+      highlightText: "Highlight Text",
+      highlightAdded: "Text highlighted!",
+      highlightRemoved: "Highlight removed",
+      highlightError: "Failed to highlight text",
     },
 
     // === MY REMINDERS ===
@@ -425,6 +430,11 @@ export const translations = {
         purple: "Ungu",
         pink: "Pink",
       },
+      selectTextToHighlight: "Pilih text dan pilih warna untuk highlight",
+      highlightText: "Highlight Text",
+      highlightAdded: "Text terhighlight!",
+      highlightRemoved: "Highlight dihapus",
+      highlightError: "Gagal menghighlight text",
     },
 
     // === MY REMINDERS ===

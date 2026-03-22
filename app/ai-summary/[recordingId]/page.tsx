@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
+import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../../lib/highlightUtils";
 import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2, Plus, Copy, Check, Star } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter } from "lucide-react";
 
 export default function AiSummaryDetailPage() {
   const router = useRouter();
@@ -24,6 +25,10 @@ export default function AiSummaryDetailPage() {
   const [highlightColor, setHighlightColor] = useState<string>("none");
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [highlights, setHighlights] = useState<HighlightRange[]>([]);
+  const [selectedText, setSelectedText] = useState<{ start: number; end: number } | null>(null);
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const [isHighlighting, setIsHighlighting] = useState(false);
 
   const colors = ["none", "yellow", "orange", "red", "green", "blue", "purple", "pink"];
 
@@ -77,10 +82,87 @@ export default function AiSummaryDetailPage() {
       setSummaryId(data[0].id);
       setIsImportant(data[0].is_important || false);
       setHighlightColor(data[0].highlight_color || "none");
+      
+      // Fetch highlights for this summary
+      const { data: highlightsData } = await supabase
+        .from("highlights")
+        .select("id, start_offset, end_offset, color")
+        .eq("summary_id", data[0].id);
+      
+      if (highlightsData) {
+        setHighlights(
+          highlightsData.map((h: any) => ({
+            id: h.id,
+            startOffset: h.start_offset,
+            endOffset: h.end_offset,
+            color: h.color,
+          }))
+        );
+      }
     } catch (error) {
       setError(t.common.failed);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTextSelect = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const selection = getSelectionRange(container);
+    if (selection && selection.text.length > 0) {
+      setSelectedText({ start: selection.start, end: selection.end });
+      setShowHighlightPicker(true);
+    }
+  };
+
+  const handleAddHighlight = async (color: string) => {
+    if (!selectedText || !summaryId) return;
+    
+    setIsHighlighting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("User not authenticated");
+        return;
+      }
+
+      const { error } = await supabase.from("highlights").insert([
+        {
+          summary_id: summaryId,
+          user_id: user.id,
+          start_offset: selectedText.start,
+          end_offset: selectedText.end,
+          color: color,
+        },
+      ]);
+
+      if (error) {
+        alert(t.aiSummary.highlightError);
+      } else {
+        // Refresh highlights
+        const { data: highlightsData } = await supabase
+          .from("highlights")
+          .select("id, start_offset, end_offset, color")
+          .eq("summary_id", summaryId);
+        
+        if (highlightsData) {
+          setHighlights(
+            highlightsData.map((h: any) => ({
+              id: h.id,
+              startOffset: h.start_offset,
+              endOffset: h.end_offset,
+              color: h.color,
+            }))
+          );
+        }
+        
+        setSelectedText(null);
+        setShowHighlightPicker(false);
+      }
+    } catch (err) {
+      alert(t.aiSummary.highlightError);
+    } finally {
+      setIsHighlighting(false);
     }
   };
 
@@ -324,15 +406,122 @@ export default function AiSummaryDetailPage() {
                 </button>
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-2xl p-6">
-                {summaries.length > 0 ? (
-                  summaries.map((summary, idx) => (
-                    <div key={idx} className="prose prose-sm max-w-none text-gray-700 mb-8">
-                      <ReactMarkdown>{summary}</ReactMarkdown>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-gray-400 italic text-center">{t.aiSummary.noSummary}</div>
+              <div>
+                {/* Highlight instruction */}
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                  <Highlighter className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-700">{t.aiSummary.selectTextToHighlight}</p>
+                </div>
+
+                {/* Content with text selection handler */}
+                <div className="bg-gray-50 rounded-2xl p-6 relative" onMouseUp={handleTextSelect}>
+                  {summaries.length > 0 ? (
+                    summaries.map((summary, idx) => {
+                      // Build content with highlights
+                      const renderContent = () => {
+                        if (highlights.length === 0) {
+                          return <ReactMarkdown>{summary}</ReactMarkdown>;
+                        }
+
+                        const sorted = [...highlights].sort(
+                          (a, b) => a.startOffset - b.startOffset
+                        );
+
+                        let elements: (string | React.ReactElement)[] = [];
+                        let lastOffset = 0;
+
+                        sorted.forEach((highlight, i) => {
+                          // Add text before highlight
+                          if (highlight.startOffset > lastOffset) {
+                            const beforeText = summary.substring(
+                              lastOffset,
+                              highlight.startOffset
+                            );
+                            elements.push(
+                              <span key={`text-before-${i}`}>{beforeText}</span>
+                            );
+                          }
+
+                          // Add highlighted text
+                          const colorStyle = getHighlightColorStyle(highlight.color);
+                          const highlightedText = summary.substring(
+                            highlight.startOffset,
+                            highlight.endOffset
+                          );
+                          elements.push(
+                            <mark
+                              key={`highlight-${highlight.id}`}
+                              style={{
+                                ...colorStyle,
+                                borderRadius: "2px",
+                                padding: "2px 4px",
+                              }}
+                            >
+                              {highlightedText}
+                            </mark>
+                          );
+
+                          lastOffset = highlight.endOffset;
+                        });
+
+                        // Add remaining text
+                        if (lastOffset < summary.length) {
+                          const remainingText = summary.substring(lastOffset);
+                          elements.push(
+                            <span key="text-remaining">{remainingText}</span>
+                          );
+                        }
+
+                        return <div>{elements}</div>;
+                      };
+
+                      return (
+                        <div
+                          key={idx}
+                          className="prose prose-sm max-w-none text-gray-700 mb-8"
+                        >
+                          {renderContent()}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-gray-400 italic text-center">{t.aiSummary.noSummary}</div>
+                  )}
+                </div>
+
+                {/* Highlight color picker (appears when text selected) */}
+                {showHighlightPicker && selectedText && (
+                  <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-lg p-3 z-50 flex gap-2">
+                    {["yellow", "orange", "red", "green", "blue", "purple", "pink"].map(
+                      (color) => (
+                        <button
+                          key={color}
+                          onClick={() => handleAddHighlight(color)}
+                          disabled={isHighlighting}
+                          className="relative group"
+                          title={t.aiSummary.colors[color as keyof typeof t.aiSummary.colors]}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                              color === "yellow"
+                                ? "bg-yellow-300 border-yellow-400"
+                                : color === "orange"
+                                ? "bg-orange-300 border-orange-400"
+                                : color === "red"
+                                ? "bg-red-300 border-red-400"
+                                : color === "green"
+                                ? "bg-green-300 border-green-400"
+                                : color === "blue"
+                                ? "bg-blue-300 border-blue-400"
+                                : color === "purple"
+                                ? "bg-purple-300 border-purple-400"
+                                : "bg-pink-300 border-pink-400"
+                            }`}
+                          />
+                        </button>
+                      )
+                    )}
+                  </div>
                 )}
               </div>
             )}
