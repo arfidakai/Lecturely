@@ -4,8 +4,9 @@ import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../../lib/highlightUtils";
+import { exportSummaryAsPDF } from "../../lib/pdfExport";
 import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter, Download } from "lucide-react";
 
 export default function AiSummaryDetailPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function AiSummaryDetailPage() {
   const [selectedText, setSelectedText] = useState<{ start: number; end: number } | null>(null);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [isHighlighting, setIsHighlighting] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const colors = ["none", "yellow", "orange", "red", "green", "blue", "purple", "pink"];
 
@@ -178,6 +180,26 @@ export default function AiSummaryDetailPage() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!summaries.length || !recordingData) return;
+    setIsExportingPDF(true);
+    try {
+      const textToCopy = summaries.join("\n\n---\n\n");
+      await exportSummaryAsPDF(
+        textToCopy,
+        recordingData.title || "Summary",
+        (error) => {
+          alert(t.aiSummary.exportError + ": " + error);
+        }
+      );
+      alert(t.aiSummary.exportedPDF);
+    } catch (err) {
+      alert(t.aiSummary.exportError);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const handleMarkImportant = async () => {
     if (!summaryId) return;
     setIsMarkingImportant(true);
@@ -320,6 +342,14 @@ export default function AiSummaryDetailPage() {
                 ) : (
                   <Copy className="w-5 h-5 text-purple-600" />
                 )}
+              </button>
+              <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF || !summaries.length}
+                className="p-2 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 active:scale-95"
+                title={t.aiSummary.exportPDF}
+              >
+                <Download className="w-5 h-5 text-purple-600" />
               </button>
               <div className="relative">
                 <button
