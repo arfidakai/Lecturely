@@ -185,6 +185,10 @@ export const translations = {
       highlightAdded: "Text highlighted!",
       highlightRemoved: "Highlight removed",
       highlightError: "Failed to highlight text",
+      exportPDF: "Export as PDF",
+      exportingPDF: "Exporting...",
+      exportedPDF: "PDF exported successfully!",
+      exportError: "Failed to export PDF",
     },
 
     // === MY REMINDERS ===
@@ -435,6 +439,10 @@ export const translations = {
       highlightAdded: "Text terhighlight!",
       highlightRemoved: "Highlight dihapus",
       highlightError: "Gagal menghighlight text",
+      exportPDF: "Export sebagai PDF",
+      exportingPDF: "Mengexport...",
+      exportedPDF: "PDF berhasil diexport!",
+      exportError: "Gagal mengexport PDF",
     },
 
     // === MY REMINDERS ===
