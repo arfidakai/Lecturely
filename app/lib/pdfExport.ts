@@ -1,5 +1,6 @@
 // PDF export utility
-import html2pdf from "html2pdf.js";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 export const exportSummaryAsPDF = async (
   summary: string,
@@ -7,15 +8,23 @@ export const exportSummaryAsPDF = async (
   onError?: (error: string) => void
 ) => {
   try {
+    // Create temporary element
     const element = document.createElement("div");
+    element.style.position = "absolute";
+    element.style.left = "-9999px";
+    element.style.width = "800px";
+    element.style.backgroundColor = "white";
+    element.style.padding = "20px";
+    element.style.fontFamily = "Arial, sans-serif";
+
     element.innerHTML = `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h1 style="color: #1f2937; margin-bottom: 10px;">AI Summary</h1>
+      <div>
+        <h1 style="color: #1f2937; margin-bottom: 10px; font-size: 24px;">AI Summary</h1>
         <h2 style="color: #6b7280; font-size: 18px; margin-bottom: 20px;">${recordingTitle}</h2>
-        <div style="color: #374151; line-height: 1.6;">
+        <div style="color: #374151; line-height: 1.6; font-size: 14px;">
           ${summary
             .split("\n")
-            .map((line) => `<p>${line}</p>`)
+            .map((line) => `<p style="margin: 8px 0;">${line}</p>`)
             .join("")}
         </div>
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
@@ -24,15 +33,46 @@ export const exportSummaryAsPDF = async (
       </div>
     `;
 
-    const opt = {
-      margin: 10,
-      filename: `summary-${recordingTitle}-${new Date().getTime()}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-    };
+    document.body.appendChild(element);
 
-    html2pdf().set(opt).from(element).save();
+    // Convert HTML to canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    // Save PDF
+    const filename = `summary-${recordingTitle}-${new Date().getTime()}.pdf`;
+    pdf.save(filename);
+
+    // Clean up
+    document.body.removeChild(element);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
     if (onError) {
