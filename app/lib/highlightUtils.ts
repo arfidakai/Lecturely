@@ -1,4 +1,5 @@
 // Utility functions for text highlighting
+//masih perlu di review
 export type HighlightRange = {
   id?: string;
   startOffset: number;
