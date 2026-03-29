@@ -2,6 +2,7 @@
 //masih perlu di review
 
 //bagian highklight utils ini masih belum kepake, tapi mungkin bisa dipake buat fitur highlight di summary nanti
+// HighlightRange: Represents a highlighted portion of text with start and end offsets and a color  
 export type HighlightRange = {
   id?: string;
   startOffset: number;
