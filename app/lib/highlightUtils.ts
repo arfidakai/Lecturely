@@ -3,6 +3,10 @@
 
 //bagian highklight utils ini masih belum kepake, tapi mungkin bisa dipake buat fitur highlight di summary nanti
 // HighlightRange: Represents a highlighted portion of text with start and end offsets and a color  
+// getSelectionRange: Gets the current text selection range within a specified container element
+// renderHighlightedText: Renders text with highlights based on provided highlight ranges
+// getHighlightColorClass: Returns a CSS class for a given highlight color
+// getHighlightColorStyle: Returns an inline style object for a given highlight color
 export type HighlightRange = {
   id?: string;
   startOffset: number;
