@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Pause, Square, X } from "lucide-react";
+import { ChevronLeft, Pause, Square, X, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
@@ -21,18 +21,25 @@ function RecordingContent() {
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [title, setTitle] = useState("");
-  const [titleTouched, setTitleTouched] = useState(false);
+  
+  // Post-stop modal state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalSubject, setModalSubject] = useState<Subject | null>(null);
+  const [savedBlob, setSavedBlob] = useState<Blob | null>(null);
+  const [savedDuration, setSavedDuration] = useState(0);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  
+  // Subject loading on mount
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    if (subjectId) {
-      fetchSubject();
-    }
-  }, [subjectId]);
+    fetchAllSubjects();
+  }, []);
 
   const fetchSubject = async () => {
     if (!subjectId) return;
@@ -43,6 +50,20 @@ function RecordingContent() {
       .single();
     if (!error && data) {
       setSubject(data);
+    }
+  };
+
+  const fetchAllSubjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("subjects")
+        .select("id, name, color, icon")
+        .order("name");
+      if (!error && data) {
+        setAllSubjects(data);
+      }
+    } catch (err) {
+      console.error("Error fetching subjects:", err);
     }
   };
 
@@ -59,15 +80,7 @@ function RecordingContent() {
   const handleStartStop = async () => {
     console.log('Button clicked!', { isRecording });
     if (!isRecording) {
-      setTitleTouched(true);
-      if (!title.trim()) {
-        setError('Judul/materi harus diisi sebelum mulai rekaman');
-        return;
-      }
-      if (!subject) {
-        setError('Subject belum dimuat. Silakan coba lagi.');
-        return;
-      }
+      // Start recording immediately without validation
       try {
         console.log('Requesting microphone access...');
         const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -139,42 +152,14 @@ function RecordingContent() {
             return;
           }
           
-          console.log('Recording valid, saving to Supabase...');
-          setIsSaving(true);
-          
-          try {
-            const formData = new FormData();
-            formData.append('audio', blob, 'recording.webm');
-            if (!subject) {
-              setError(t.recording.loadingSubject);
-              setIsSaving(false);
-              setIsRecording(false);
-              return;
-            }
-            formData.append('subjectId', subject.id);
-            formData.append('duration', duration.toString());
-            formData.append('title', title.trim());
-
-            const response = await fetchWithAuthFormData('/api/recordings', formData);
-
-            if (!response.ok) {
-              throw new Error(t.common.failed);
-            }
-
-            const { recording } = await response.json();
-            console.log('Recording saved successfully:', recording);
-            
-            if (streamRef.current) {
-              streamRef.current.getTracks().forEach(track => track.stop());
-            }
-            console.log('Navigating to post-record...');
-            router.push(`/post-record?duration=${duration}&subjectId=${subject.id}&recordingId=${recording.id}`);
-          } catch (error) {
-            console.error('Error saving recording:', error);
-            setError(t.common.failed);
-            setIsSaving(false);
-            setIsRecording(false);
-          }
+          console.log('Recording valid, showing save modal...');
+          // Save blob and duration for modal submission
+          setSavedBlob(blob);
+          setSavedDuration(duration);
+          setModalTitle('');
+          setModalSubject(null); // Don't pre-select subject
+          setShowSaveModal(true);
+          setIsRecording(false);
         };
       }
     }
@@ -216,8 +201,6 @@ function RecordingContent() {
     setIsPaused(false);
     setDuration(0);
     setError(null);
-    setTitle('');
-    setTitleTouched(false);
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -226,6 +209,85 @@ function RecordingContent() {
       .padStart(2, "0");
     const seconds = (totalSeconds % 60).toString().padStart(2, "0");
     return `${minutes}:${seconds}`;
+  };
+
+  const handleSaveRecording = async () => {
+    if (!modalTitle.trim()) {
+      alert(t.common.subject + " is required");
+      return;
+    }
+    if (!modalSubject) {
+      alert("Subject is required");
+      return;
+    }
+    if (!savedBlob) {
+      alert("Recording not found");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Get the authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError("Not authenticated");
+        setIsSaving(false);
+        return;
+      }
+
+      // Upload recording to Supabase
+      const fileName = `recording_${Date.now()}.webm`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("recordings")
+        .upload(`${user.id}/${fileName}`, savedBlob, {
+          contentType: "audio/webm",
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Create recording record in database
+      const { data: recordingData, error: dbError } = await supabase
+        .from("recordings")
+        .insert({
+          user_id: user.id,
+          subject_id: modalSubject.id,
+          title: modalTitle.trim(),
+          duration: savedDuration,
+          storage_path: uploadData?.path || fileName,
+        })
+        .select("id")
+        .single();
+
+      if (dbError) throw dbError;
+
+      setShowSaveModal(false);
+      setModalTitle("");
+      setModalSubject(null);
+      setSavedBlob(null);
+      setSavedDuration(0);
+
+      // Navigate to post-record page
+      router.push(
+        `/post-record?duration=${savedDuration}&subjectId=${modalSubject.id}&recordingId=${recordingData.id}`
+      );
+    } catch (err) {
+      console.error("Error saving recording:", err);
+      setError("Failed to save recording. Please try again.");
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelModal = () => {
+    // Stop all tracks if still recording
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setShowSaveModal(false);
+    setModalTitle("");
+    setModalSubject(null);
+    setSavedBlob(null);
+    setSavedDuration(0);
+    setDuration(0);
   };
 
   return (
@@ -242,53 +304,8 @@ function RecordingContent() {
             </button>
           </div>
 
-          {/* Subject Info */}
-          <div className="px-6 mb-12">
-            <div className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-sm">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                style={{ backgroundColor: `${subject?.color}20` }}
-              >
-                {subject?.icon}
-              </div>
-              <div>
-                <div className="text-sm text-gray-900">{subject?.name}</div>
-                <div className="text-xs text-gray-400">
-                  {new Date().toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Recording Visual */}
           <div className="flex-1 flex flex-col items-center justify-center px-6">
-            {/* Input Judul/Materi */}
-            {!isRecording && (
-              <div className="w-full max-w-md mb-8">
-                <label htmlFor="judul" className="block text-sm font-medium text-gray-700 mb-2">{t.common.subject}</label>
-                <input
-                  id="judul"
-                  type="text"
-                  value={title}
-                  onChange={e => { setTitle(e.target.value); setError(null); }}
-                  onBlur={() => setTitleTouched(true)}
-                  className={`w-full px-4 py-3 rounded-xl border ${titleTouched && !title.trim() ? 'border-red-400' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-900 text-base bg-white shadow-sm`}
-                  placeholder="Contoh: Algoritma Sorting, Limit Tak Hingga, dll"
-                  disabled={isRecording || isSaving}
-                  autoFocus
-                />
-                {titleTouched && !title.trim() && (
-                  <div className="text-sm text-purple-600 mb-4 text-center px-4">
-  {t.recording.processing}
-</div>
-                )}
-              </div>
-            )}
-
             {/* Timer */}
             <div className="text-5xl text-gray-900 mb-16 tabular-nums">
               {formatTime(duration)}
@@ -328,7 +345,7 @@ function RecordingContent() {
                   e.stopPropagation();
                   handleStartStop();
                 }}
-                disabled={isSaving || (!isRecording && !title.trim())}
+                disabled={isSaving}
                 className="relative bg-transparent border-0 p-0 cursor-pointer touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
                 type="button"
@@ -416,6 +433,94 @@ function RecordingContent() {
               </div>
             )}
           </div>
+
+          {/* Save Recording Modal */}
+          {showSaveModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-md mx-auto bg-white rounded-t-3xl p-6 shadow-2xl"
+              >
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                    Save Recording
+                  </h2>
+
+                  {/* Subject Selection */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subject
+                    </label>
+                    <select
+                      value={modalSubject?.id || ""}
+                      onChange={(e) => {
+                        const selected = allSubjects.find(
+                          (s) => s.id === e.target.value
+                        );
+                        setModalSubject(selected || null);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    >
+                      <option value="">Select a subject</option>
+                      {allSubjects.map((subject) => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.icon} {subject.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Title Input */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recording Title
+                    </label>
+                    <input
+                      type="text"
+                      value={modalTitle}
+                      onChange={(e) => setModalTitle(e.target.value)}
+                      placeholder="e.g., Algorithms Lecture"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+
+                  {/* Recording Info */}
+                  <div className="bg-purple-50 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-gray-600">
+                      Duration: {formatTime(savedDuration)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCancelModal}
+                    disabled={isSaving}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveRecording}
+                    disabled={isSaving || !modalTitle.trim() || !modalSubject}
+                    className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save & Transcribe"
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </div>
       </div>
     </div>
