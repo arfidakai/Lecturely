@@ -98,7 +98,7 @@ export default function Home() {
   };
 
   const handleNavigateToSubjects = () => {
-    router.push("/subject-selection");
+    router.push("/recording");
   };
 
   const handleNavigateToNotesList = (subjectSlug: string) => {

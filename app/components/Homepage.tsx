@@ -379,7 +379,7 @@
                         Record Your Lectures
                       </h3>
                       <p className="text-xs text-gray-600">
-                        Tap "Start Recording" and select a subject to capture audio
+                        Tap "Start Recording" to begin capturing audio instantly
                       </p>
                     </div>
                   </div>
