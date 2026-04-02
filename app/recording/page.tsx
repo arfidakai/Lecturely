@@ -227,38 +227,22 @@ function RecordingContent() {
 
     setIsSaving(true);
     try {
-      // Get the authenticated user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("Not authenticated");
-        setIsSaving(false);
-        return;
+      // Use API endpoint to save recording (respects RLS)
+      const formData = new FormData();
+      formData.append("audio", savedBlob);
+      formData.append("title", modalTitle.trim());
+      formData.append("subjectId", modalSubject.id);
+      formData.append("duration", savedDuration.toString());
+
+      const response = await fetchWithAuthFormData("/api/recordings", formData);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save recording");
       }
 
-      // Upload recording to Supabase
-      const fileName = `recording_${Date.now()}.webm`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("recordings")
-        .upload(`${user.id}/${fileName}`, savedBlob, {
-          contentType: "audio/webm",
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Create recording record in database
-      const { data: recordingData, error: dbError } = await supabase
-        .from("recordings")
-        .insert({
-          user_id: user.id,
-          subject_id: modalSubject.id,
-          title: modalTitle.trim(),
-          duration: savedDuration,
-          storage_path: uploadData?.path || fileName,
-        })
-        .select("id")
-        .single();
-
-      if (dbError) throw dbError;
+      const result = await response.json();
+      const recordingId = result.recording.id;
 
       setShowSaveModal(false);
       setModalTitle("");
@@ -268,11 +252,11 @@ function RecordingContent() {
 
       // Navigate to post-record page
       router.push(
-        `/post-record?duration=${savedDuration}&subjectId=${modalSubject.id}&recordingId=${recordingData.id}`
+        `/post-record?duration=${savedDuration}&subjectId=${modalSubject.id}&recordingId=${recordingId}`
       );
     } catch (err) {
       console.error("Error saving recording:", err);
-      setError("Failed to save recording. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to save recording. Please try again.");
       setIsSaving(false);
     }
   };
