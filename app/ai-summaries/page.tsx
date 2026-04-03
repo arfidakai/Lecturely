@@ -25,14 +25,13 @@ export default function AiSummariesPage() {
     const fetchSummaries = async () => {
       setLoading(true);
       setError(null);
-      // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         setError(t.common.failed);
         setLoading(false);
         return;
       }
-      // Fetch summaries for this user by joining recordings table
+
       const { data, error } = await supabase
         .from("summaries")
         .select("id,recording_id,created_at,content,is_important,highlight_color,recordings(user_id)")
