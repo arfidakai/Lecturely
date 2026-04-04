@@ -471,10 +471,27 @@ function RecordingContent() {
                   </div>
 
                   {/* Recording Info */}
-                  <div className="bg-purple-50 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-gray-600">
-                      Duration: {formatTime(savedDuration)}
-                    </p>
+                  <div className="bg-purple-50 rounded-lg p-4 mb-4 space-y-2 border border-purple-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Duration:</span>
+                      <span className="font-semibold text-gray-900">{formatTime(savedDuration)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">File Size:</span>
+                      <span className="font-semibold text-gray-900">{savedBlob ? (savedBlob.size / 1024 / 1024).toFixed(2) : "0"} MB</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Format:</span>
+                      <span className="font-semibold text-gray-900">Audio WebM</span>
+                    </div>
+                    {modalTitle.trim() && (
+                      <div className="pt-2 border-t border-purple-200">
+                        <span className="text-xs text-gray-500">Filename will be:</span>
+                        <p className="text-xs text-gray-700 mt-1 font-mono break-all bg-white p-2 rounded">
+                          {modalTitle.trim()}-{new Date().toISOString().split('T')[0]}.webm
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
