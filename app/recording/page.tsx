@@ -211,6 +211,19 @@ function RecordingContent() {
     return `${minutes}:${seconds}`;
   };
 
+  const getPreviewFilename = (title: string) => {
+    const safeTitle = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const finalTitle = safeTitle || "untitled-recording";
+    const date = new Date().toISOString().split("T")[0];
+
+    return `${finalTitle}-${date}.webm`;
+  };
+
   const handleSaveRecording = async () => {
     if (!modalTitle.trim()) {
       alert(t.common.subject + " is required");
@@ -484,14 +497,12 @@ function RecordingContent() {
                       <span className="text-sm text-gray-600">Format:</span>
                       <span className="font-semibold text-gray-900">Audio WebM</span>
                     </div>
-                    {modalTitle.trim() && (
-                      <div className="pt-2 border-t border-purple-200">
-                        <span className="text-xs text-gray-500">Filename will be:</span>
-                        <p className="text-xs text-gray-700 mt-1 font-mono break-all bg-white p-2 rounded">
-                          {modalTitle.trim()}-{new Date().toISOString().split('T')[0]}.webm
-                        </p>
-                      </div>
-                    )}
+                    <div className="pt-2 border-t border-purple-200">
+                      <span className="text-xs text-gray-500">Suggested filename:</span>
+                      <p className="text-xs text-gray-700 mt-1 font-mono break-all bg-white p-2 rounded">
+                        {getPreviewFilename(modalTitle)}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
