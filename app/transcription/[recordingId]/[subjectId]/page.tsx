@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
-import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2 } from "lucide-react";
+import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2, Home } from "lucide-react";
 import { fetchWithAuth } from "../../../lib/fetch-with-auth";
 
 export default function TranscriptionPage() {
@@ -109,48 +109,58 @@ export default function TranscriptionPage() {
       <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
         <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 to-white">
           {/* Header */}
-          <div className="px-6 pt-16 pb-4 border-b border-gray-100 bg-gradient-to-b from-purple-50 to-white">
-            <div className="flex items-center gap-4 mb-4">
+          <div className="px-6 pt-16 pb-4 border-b border-gray-100 bg-gradient-to-b from-purple-50 to-white sticky top-0 z-10">
+            <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => router.back()}
-                className="p-2 hover:bg-white rounded-full transition-colors active:scale-95"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
+                title="Go back"
               >
                 <ChevronLeft className="w-6 h-6 text-gray-700" />
               </button>
-              <div className="flex-1">
-                <h1 className="text-xl text-gray-900">Transcription</h1>
-                <p className="text-xs text-gray-500">
-                  {new Date().toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-              {/* Action buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleShare}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
-                  title="Share"
-                >
-                  <Share2 className="w-5 h-5 text-gray-700" />
-                </button>
-                <button
-                  onClick={() => router.push(`/reminder?recordingId=${recordingId}`)}
-                  className="p-2 hover:bg-purple-50 rounded-full transition-colors active:scale-95"
-                  title="Set Reminder"
-                >
-                  <Bell className="w-5 h-5 text-purple-600" />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="p-2 hover:bg-red-50 rounded-full transition-colors active:scale-95 disabled:opacity-50"
-                  title="Delete"
-                >
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </button>
-              </div>
+              <h1 className="text-xl font-semibold text-gray-900">Transcription</h1>
+              <button
+                onClick={() => router.push('/')}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
+                title="Go to home"
+              >
+                <Home className="w-6 h-6 text-gray-700" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 text-center">
+              {new Date().toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+            {/* Action buttons */}
+            <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-gray-200">
+              <button
+                onClick={handleShare}
+                className="flex-1 p-2 hover:bg-gray-100 rounded-lg transition-colors active:scale-95 flex items-center justify-center gap-2"
+                title="Share transcription"
+              >
+                <Share2 className="w-4 h-4 text-gray-700" />
+                <span className="text-xs text-gray-700">Share</span>
+              </button>
+              <button
+                onClick={() => router.push(`/reminder?recordingId=${recordingId}`)}
+                className="flex-1 p-2 hover:bg-purple-50 rounded-lg transition-colors active:scale-95 flex items-center justify-center gap-2"
+                title="Set reminder"
+              >
+                <Bell className="w-4 h-4 text-purple-600" />
+                <span className="text-xs text-purple-600">Remind</span>
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 p-2 hover:bg-red-50 rounded-lg transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                title="Delete recording"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+                <span className="text-xs text-red-500">Delete</span>
+              </button>
             </div>
           </div>
 
