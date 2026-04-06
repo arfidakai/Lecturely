@@ -303,36 +303,48 @@ function RecordingContent() {
 
           {/* Recording Visual */}
           <div className="flex-1 flex flex-col items-center justify-center px-6">
-            {/* Timer */}
-            <div className="text-5xl text-gray-900 mb-16 tabular-nums">
-              {formatTime(duration)}
-            </div>
+            {/* Timer - Only show when recording */}
+            {isRecording && (
+              <div className="text-5xl text-gray-900 mb-16 tabular-nums">
+                {formatTime(duration)}
+              </div>
+            )}
 
-            {/* Waveform Animation */}
-            <div className="flex items-center justify-center gap-1.5 mb-16 h-20">
-              {[...Array(25)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="w-1 bg-purple-400 rounded-full"
-                  animate={
-                    isRecording && !isPaused
-                      ? {
-                          height: [
-                            Math.random() * 30 + 20,
-                            Math.random() * 60 + 20,
-                            Math.random() * 30 + 20,
-                          ],
-                        }
-                      : { height: 20 }
-                  }
-                  transition={{
-                    duration: 0.8,
-                    repeat: Infinity,
-                    delay: i * 0.05,
-                  }}
-                />
-              ))}
-            </div>
+            {/* Waveform Animation - Only show when recording */}
+            {isRecording && (
+              <div className="flex items-center justify-center gap-1.5 mb-16 h-20">
+                {[...Array(25)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1 bg-purple-400 rounded-full"
+                    animate={
+                      isRecording && !isPaused
+                        ? {
+                            height: [
+                              Math.random() * 30 + 20,
+                              Math.random() * 60 + 20,
+                              Math.random() * 30 + 20,
+                            ],
+                          }
+                        : { height: 20 }
+                    }
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                      delay: i * 0.05,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Info Text - Only show when not recording */}
+            {!isRecording && (
+              <div className="text-center mb-16">
+                <p className="text-lg text-gray-600 font-medium mb-2">Ready to record</p>
+                <p className="text-sm text-gray-400">Tap the button below to start recording your lecture</p>
+              </div>
+            )}
 
             {/* Record Button */}
             <div className="relative mb-8 z-50">

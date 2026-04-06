@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock, Calendar, CheckCircle, Save, Loader2, Trash2, X } from "lucide-react";
+import { Clock, Calendar, CheckCircle, Loader2, Trash2, X } from "lucide-react";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
@@ -93,13 +93,6 @@ import { useLanguage } from "../contexts/LanguageContext";
       }
       setIsTranscribing(false);
     }
-  };
-
-  const handleSaveLater = () => {
-    localStorage.removeItem('recordingBlob');
-    // Trigger refresh event before navigating
-    window.dispatchEvent(new Event('refreshRecordings'));
-    router.push("/");
   };
 
   const handleCancel = async () => {
@@ -214,15 +207,6 @@ import { useLanguage } from "../contexts/LanguageContext";
                     <span className="text-xl">✨</span>
                   </>
                 )}
-              </button>
-
-              <button
-                onClick={handleSaveLater}
-                disabled={isTranscribing || isDeleting}
-                className="w-full bg-white text-gray-700 rounded-2xl py-4 px-6 border-2 border-gray-200 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-5 h-5" />
-                <span className="text-base">Save for Later</span>
               </button>
 
               <button
