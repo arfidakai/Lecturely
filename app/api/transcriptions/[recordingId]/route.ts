@@ -32,6 +32,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       text: fullText,
+      id: transcriptions[0].id,
       transcriptions,
     });
   } catch (error: any) {
