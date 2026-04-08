@@ -21,17 +21,50 @@ export const getSelectionRange = (containerElement: HTMLElement): { start: numbe
   }
 
   const range = selection.getRangeAt(0);
+  
+  const fullText = containerElement.innerText;
+  
   const preCaretRange = range.cloneRange();
   preCaretRange.selectNodeContents(containerElement);
   preCaretRange.setEnd(range.endContainer, range.endOffset);
-
-  const start = preCaretRange.toString().length - range.toString().length;
-  const end = start + range.toString().length;
+  
+  const beforeText = preCaretRange.toString();
+  const selectedText = selection.toString();
+  
+  let start = 0;
+  let charCount = 0;
+  
+  const walkNodes = (node: Node): boolean => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent || '';
+      for (let i = 0; i < text.length; i++) {
+        if (charCount === beforeText.length - selectedText.length) {
+          start = charCount;
+          return true;
+        }
+        charCount++;
+      }
+    } else {
+      if (node.nodeType === Node.ELEMENT_NODE && 
+          (node.nodeName === 'DIV' || node.nodeName === 'P' || node.nodeName === 'BR')) {
+        charCount += 1; 
+      }
+      for (let i = 0; i < node.childNodes.length; i++) {
+        if (walkNodes(node.childNodes[i])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  
+  const start2 = beforeText.length - selectedText.length;
+  const end = start2 + selectedText.length;
 
   return {
-    start,
-    end,
-    text: range.toString(),
+    start: Math.max(0, start2),
+    end: end,
+    text: selectedText,
   };
 };
 
