@@ -6,6 +6,7 @@ import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2, Home, Highlighter
 import { fetchWithAuth } from "../../../lib/fetch-with-auth";
 import { supabase } from "../../../lib/supabase";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../../../lib/highlightUtils";
+import NotificationToast from "../../../components/NotificationToast";
 
 export default function TranscriptionPage() {
   const router = useRouter();
@@ -21,8 +22,13 @@ export default function TranscriptionPage() {
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [transcriptionId, setTranscriptionId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ show: boolean; title: string; message: string; icon: string }>({ show: false, title: '', message: '', icon: '' });
 
   const colors = ["yellow", "orange", "red", "green", "blue", "purple", "pink"];
+
+  const showToast = (title: string, message: string, icon: string = '✨') => {
+    setToast({ show: true, title, message, icon });
+  };
 
   useEffect(() => {
     if (!recordingId) {
@@ -90,9 +96,9 @@ export default function TranscriptionPage() {
       }).catch(console.error);
     } else {
       navigator.clipboard.writeText(transcription).then(() => {
-        alert('Transcription copied to clipboard!');
+        showToast('Success', 'Transcription copied to clipboard', '📋');
       }).catch(() => {
-        alert('Failed to copy transcription');
+        showToast('Error', 'Failed to copy transcription', '❌');
       });
     }
   };
@@ -127,7 +133,7 @@ export default function TranscriptionPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        alert("User not authenticated");
+        showToast('Error', 'User not authenticated', '❌');
         return;
       }
 
@@ -142,7 +148,7 @@ export default function TranscriptionPage() {
       ]);
 
       if (error) {
-        alert("Failed to add highlight");
+        showToast('Error', 'Failed to add highlight', '❌');
       } else {
         // Refresh highlights
         const { data: highlightsData } = await supabase
@@ -161,11 +167,12 @@ export default function TranscriptionPage() {
           );
         }
         
+        showToast('Success', 'Text highlighted successfully', '🎨');
         setSelectedText(null);
         setShowHighlightPicker(false);
       }
     } catch (err) {
-      alert("Failed to add highlight");
+      showToast('Error', 'Failed to add highlight', '❌');
     } finally {
       setIsHighlighting(false);
     }
@@ -180,12 +187,13 @@ export default function TranscriptionPage() {
         .eq("id", highlightId);
 
       if (error) {
-        alert("Failed to delete highlight");
+        showToast('Error', 'Failed to delete highlight', '❌');
       } else {
         setHighlights(highlights.filter(h => h.id !== highlightId));
+        showToast('Success', 'Highlight removed', '✨');
       }
     } catch (err) {
-      alert("Failed to delete highlight");
+      showToast('Error', 'Failed to delete highlight', '❌');
     }
   };
 
@@ -203,10 +211,11 @@ export default function TranscriptionPage() {
       if (!response.ok) {
         throw new Error('Failed to delete recording');
       }
-      router.push('/');
+      showToast('Success', 'Recording deleted', '✅');
+      setTimeout(() => router.push('/'), 500);
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete recording. Please try again.');
+      showToast('Error', 'Failed to delete recording. Please try again.', '❌');
       setIsDeleting(false);
     }
   };
@@ -447,6 +456,15 @@ export default function TranscriptionPage() {
           )}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      <NotificationToast
+        show={toast.show}
+        title={toast.title}
+        message={toast.message}
+        icon={toast.icon}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
     </div>
   );
 }
