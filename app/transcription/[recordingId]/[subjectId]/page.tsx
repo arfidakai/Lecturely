@@ -147,8 +147,15 @@ export default function TranscriptionPage() {
         },
       ]);
 
+      if (error && error.message?.includes('transcription_id')) {
+        showToast('Setup Required', 'Please run the database migration first. Check documentation.', '⚠️');
+        setIsHighlighting(false);
+        return;
+      }
+
       if (error) {
-        showToast('Error', 'Failed to add highlight', '❌');
+        console.error('Highlight error:', error);
+        showToast('Error', 'Failed to add highlight: ' + (error.message || 'Unknown error'), '❌');
       } else {
         // Refresh highlights
         const { data: highlightsData } = await supabase
@@ -172,6 +179,7 @@ export default function TranscriptionPage() {
         setShowHighlightPicker(false);
       }
     } catch (err) {
+      console.error('Highlight error:', err);
       showToast('Error', 'Failed to add highlight', '❌');
     } finally {
       setIsHighlighting(false);
@@ -313,11 +321,11 @@ export default function TranscriptionPage() {
 
                 {/* Content with highlights and text selection handler */}
                 <div className="bg-gray-50 rounded-2xl p-6 relative" onMouseUp={handleTextSelect}>
-                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <div className="text-sm text-gray-700 leading-relaxed">
                     {transcription.length > 0 ? (
                       (() => {
                         if (highlights.length === 0) {
-                          return transcription;
+                          return <>{transcription}</>;
                         }
 
                         const sorted = [...highlights].sort(
@@ -346,7 +354,7 @@ export default function TranscriptionPage() {
                             highlight.endOffset
                           );
                           elements.push(
-                            <span key={`highlight-${highlight.id}`} className="relative group">
+                            <span key={`highlight-${highlight.id}`} className="relative group inline">
                               <mark
                                 style={{
                                   ...colorStyle,
@@ -358,8 +366,12 @@ export default function TranscriptionPage() {
                                 {highlightedText}
                               </mark>
                               <button
-                                onClick={() => handleDeleteHighlight(highlight.id)}
-                                className="absolute -top-8 left-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDeleteHighlight(highlight.id);
+                                }}
+                                className="absolute -top-8 left-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10"
                               >
                                 <X className="w-3 h-3 inline mr-1" />
                                 Delete
@@ -378,7 +390,7 @@ export default function TranscriptionPage() {
                           );
                         }
 
-                        return elements;
+                        return <>{elements}</>;
                       })()
                     ) : (
                       "No transcription available"
