@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Pause, Square, X, AlertCircle } from "lucide-react";
+import { ChevronLeft, Pause, Square, X, AlertCircle, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Subject } from "../types";
 import { supabase } from "../lib/supabase";
@@ -29,6 +29,12 @@ function RecordingContent() {
   const [savedBlob, setSavedBlob] = useState<Blob | null>(null);
   const [savedDuration, setSavedDuration] = useState(0);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  
+  const [showNewSubjectForm, setShowNewSubjectForm] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSubjectIcon, setNewSubjectIcon] = useState("📚");
+  const [isCreatingSubject, setIsCreatingSubject] = useState(false);
+  const [newSubjectError, setNewSubjectError] = useState<string | null>(null);
   
   // Subject loading on mount
   const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
@@ -64,6 +70,54 @@ function RecordingContent() {
       }
     } catch (err) {
       console.error("Error fetching subjects:", err);
+    }
+  };
+
+  const handleCreateNewSubject = async () => {
+    if (!newSubjectName.trim()) {
+      setNewSubjectError("Subject name is required");
+      return;
+    }
+
+    setIsCreatingSubject(true);
+    setNewSubjectError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setNewSubjectError("User not authenticated");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("subjects")
+        .insert([
+          {
+            user_id: user.id,
+            name: newSubjectName.trim(),
+            icon: newSubjectIcon,
+            color: "purple", // Default color
+          },
+        ])
+        .select();
+
+      if (error) {
+        setNewSubjectError(error.message || "Failed to create subject");
+        return;
+      }
+
+      if (data && data[0]) {
+        const newSubject = data[0];
+        setAllSubjects([...allSubjects, newSubject]);
+        setModalSubject(newSubject);
+        setNewSubjectName("");
+        setNewSubjectIcon("📚");
+        setShowNewSubjectForm(false);
+      }
+    } catch (err) {
+      setNewSubjectError(err instanceof Error ? err.message : "Failed to create subject");
+    } finally {
+      setIsCreatingSubject(false);
     }
   };
 
@@ -462,23 +516,114 @@ function RecordingContent() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Subject
                     </label>
-                    <select
-                      value={modalSubject?.id || ""}
-                      onChange={(e) => {
-                        const selected = allSubjects.find(
-                          (s) => s.id === e.target.value
-                        );
-                        setModalSubject(selected || null);
-                      }}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-                    >
-                      <option value="">Select a subject</option>
-                      {allSubjects.map((subject) => (
-                        <option key={subject.id} value={subject.id}>
-                          {subject.icon} {subject.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2 mb-3">
+                      <select
+                        value={modalSubject?.id || ""}
+                        onChange={(e) => {
+                          const selected = allSubjects.find(
+                            (s) => s.id === e.target.value
+                          );
+                          setModalSubject(selected || null);
+                        }}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      >
+                        <option value="">Select a subject</option>
+                        {allSubjects.map((subject) => (
+                          <option key={subject.id} value={subject.id}>
+                            {subject.icon} {subject.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setShowNewSubjectForm(!showNewSubjectForm)}
+                        className="px-4 py-3 bg-purple-50 text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 transition-colors flex items-center justify-center gap-1"
+                        title="Add new subject"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">New</span>
+                      </button>
+                    </div>
+
+                    {/* New Subject Form */}
+                    {showNewSubjectForm && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg"
+                      >
+                        <h3 className="text-sm font-medium text-gray-900 mb-3">Create New Subject</h3>
+                        
+                        {newSubjectError && (
+                          <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                            {newSubjectError}
+                          </div>
+                        )}
+
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Subject Name
+                          </label>
+                          <input
+                            type="text"
+                            value={newSubjectName}
+                            onChange={(e) => setNewSubjectName(e.target.value)}
+                            placeholder="e.g., Chemistry"
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
+                          />
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Icon (emoji)
+                          </label>
+                          <div className="flex gap-2 flex-wrap">
+                            {['📚', '🔬', '📐', '🎨', '🎵', '⚽', '🌍', '💻', '📖', '✏️'].map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => setNewSubjectIcon(emoji)}
+                                className={`px-3 py-2 rounded border-2 transition-all text-lg ${
+                                  newSubjectIcon === emoji
+                                    ? 'border-purple-500 bg-purple-100'
+                                    : 'border-gray-300 hover:border-purple-300'
+                                }`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setShowNewSubjectForm(false);
+                              setNewSubjectName("");
+                              setNewSubjectIcon("📚");
+                              setNewSubjectError(null);
+                            }}
+                            disabled={isCreatingSubject}
+                            className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleCreateNewSubject}
+                            disabled={isCreatingSubject || !newSubjectName.trim()}
+                            className="flex-1 px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                          >
+                            {isCreatingSubject ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent" />
+                                Creating...
+                              </>
+                            ) : (
+                              'Create'
+                            )}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
 
                   {/* Title Input */}
