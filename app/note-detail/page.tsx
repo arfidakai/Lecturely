@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Trash2, Download, Share2, Sparkles, Loader2, Highlighter, X } from "lucide-react";
+import { ChevronLeft, Trash2, Download, Share2, Sparkles, Loader2, Highlighter, X, Save } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../lib/highlightUtils";
@@ -324,6 +324,51 @@ function NoteDetailContent() {
     }
   };
 
+  const handleSaveAsNote = async () => {
+    if (!recording || !transcriptionId) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        showToast('Error', 'User not authenticated', '❌');
+        return;
+      }
+
+      // Collect all highlighted text
+      const fullText = transcriptions.map((t) => t.text).join(" ");
+      let highlightedContent = "";
+      
+      if (highlights.length > 0) {
+        const sorted = [...highlights].sort((a, b) => a.startOffset - b.startOffset);
+        highlightedContent = sorted
+          .map((h) => fullText.substring(h.startOffset, h.endOffset))
+          .join("\n");
+      }
+
+      const noteTitle = `${recording.title} - Highlights`;
+      const noteContent = highlightedContent || fullText;
+
+      const { error } = await supabase.from("notes").insert([
+        {
+          user_id: user.id,
+          subject_id: recording.subject_id,
+          title: noteTitle,
+          content: noteContent,
+        },
+      ]);
+
+      if (error) {
+        console.error('Save note error:', error);
+        showToast('Error', 'Failed to save note', '❌');
+      } else {
+        showToast('Success', 'Saved to notes', '📝');
+      }
+    } catch (err) {
+      console.error('Save note error:', err);
+      showToast('Error', 'Failed to save note', '❌');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
@@ -368,6 +413,13 @@ function NoteDetailContent() {
               <ChevronLeft className="w-6 h-6 text-gray-700" />
             </button>
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleSaveAsNote}
+                className="p-2 hover:bg-purple-50 rounded-full transition-colors active:scale-95"
+                title="Save as note"
+              >
+                <Save className="w-5 h-5 text-purple-600" />
+              </button>
               <button
                 onClick={handleShare}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"

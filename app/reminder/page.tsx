@@ -3,8 +3,8 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Bell, CheckCircle, Loader2, Calendar, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import Swal from "sweetalert2";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
+import NotificationToast from "../components/NotificationToast";
 
 interface Recording {
   id: string;
@@ -29,6 +29,11 @@ function ReminderContent() {
   const [customTime, setCustomTime] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; title: string; message: string; icon: string }>({ show: false, title: '', message: '', icon: '' });
+
+  const showToast = (title: string, message: string, icon: string = '✨') => {
+    setToast({ show: true, title, message, icon });
+  };
 
   const reminderOptions = [
     { id: "1hour", label: "In 1 hour", hours: 1 },
@@ -79,11 +84,7 @@ function ReminderContent() {
     // Handle custom time
     if (selectedTime === "custom") {
       if (!customDate || !customTime) {
-        Swal.fire({
-          icon: "warning",
-          title: "Incomplete",
-          text: "Please select both date and time for custom reminder.",
-        });
+        showToast('Incomplete', 'Please select both date and time for custom reminder.', '⚠️');
         setSaving(false);
         return;
       }
@@ -92,11 +93,7 @@ function ReminderContent() {
       
       // Check if time is in the past
       if (reminderTime <= new Date()) {
-        Swal.fire({
-          icon: "warning",
-          title: "Invalid Time",
-          text: "Please select a future date and time.",
-        });
+        showToast('Invalid Time', 'Please select a future date and time.', '⏰');
         setSaving(false);
         return;
       }
@@ -126,11 +123,7 @@ function ReminderContent() {
       }, 2000);
     } catch (error) {
       console.error('Error creating reminder:', error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to set reminder. Please try again.",
-      });
+      showToast('Error', 'Failed to set reminder. Please try again.', '❌');
     } finally {
       setSaving(false);
     }
@@ -287,6 +280,15 @@ function ReminderContent() {
           )}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      <NotificationToast
+        show={toast.show}
+        title={toast.title}
+        message={toast.message}
+        icon={toast.icon}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
     </div>
   );
 }
