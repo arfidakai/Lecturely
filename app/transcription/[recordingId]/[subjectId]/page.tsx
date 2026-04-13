@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
-import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2, Home, Highlighter, X } from "lucide-react";
+import { ChevronLeft, Loader2, Sparkles, Bell, Share2, Trash2, Home, Highlighter, X, FileText } from "lucide-react";
 import { fetchWithAuth } from "../../../lib/fetch-with-auth";
 import { supabase } from "../../../lib/supabase";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../../../lib/highlightUtils";
@@ -23,6 +23,7 @@ export default function TranscriptionPage() {
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [transcriptionId, setTranscriptionId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; title: string; message: string; icon: string }>({ show: false, title: '', message: '', icon: '' });
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const colors = ["yellow", "orange", "red", "green", "blue", "purple", "pink"];
 
@@ -228,6 +229,58 @@ export default function TranscriptionPage() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!transcription) {
+      showToast('Error', 'No transcription to export', '❌');
+      return;
+    }
+
+    setIsExportingPDF(true);
+    try {
+      const content = `TRANSCRIPTION\n\nDate: ${new Date().toLocaleDateString()}\n\n${transcription}`;
+      
+      // For now, we'll use a simple text-based approach
+      // If html2pdf is available, we can use it for better formatting
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <h1>Transcription</h1>
+        <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <hr/>
+        <pre style="white-space: pre-wrap; word-wrap: break-word;">${transcription}</pre>
+      `;
+
+      try {
+        const html2pdf = (window as any).html2pdf;
+        if (html2pdf) {
+          html2pdf.default()
+            .set({ margin: 10, filename: 'transcription.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' } })
+            .from(element)
+            .save();
+          showToast('Success', 'PDF exported successfully', '✅');
+        } else {
+          throw new Error('PDF library not available');
+        }
+      } catch (err) {
+        // Fallback: download as text file
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'transcription.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Success', 'Transcription exported as text', '✅');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      showToast('Error', 'Failed to export transcription', '❌');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
       <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
@@ -267,6 +320,15 @@ export default function TranscriptionPage() {
               >
                 <Share2 className="w-4 h-4 text-gray-700" />
                 <span className="text-xs text-gray-700">Share</span>
+              </button>
+              <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="flex-1 p-2 hover:bg-purple-50 rounded-lg transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                title="Export as PDF"
+              >
+                <FileText className="w-4 h-4 text-purple-600" />
+                <span className="text-xs text-purple-600">Export</span>
               </button>
               <button
                 onClick={() => router.push(`/reminder?recordingId=${recordingId}`)}
