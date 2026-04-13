@@ -1,16 +1,24 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BookOpen, Loader2, Plus } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../contexts/LanguageContext";
 
-interface Recording {
+interface Note {
   id: string;
   subject_id: string;
   title: string;
-  duration: number;
-  date: string;
-  transcribed: boolean;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
 }
 
 function NotesContent() {
@@ -18,75 +26,171 @@ function NotesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId");
-  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
   useEffect(() => {
-    const isValidUUID = (id: string) => {
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    };
-    const fetchRecordings = async () => {
-      setLoading(true);
-      setError(null);
-      if (subjectId && !isValidUUID(subjectId)) {
-        setError("Invalid subject ID");
-        setRecordings([]);
-        setLoading(false);
-        return;
-      }
-      let query = supabase.from("recordings").select("id,subject_id,title,duration,date,transcribed").order("date", { ascending: false });
-      if (subjectId) query = query.eq("subject_id", subjectId);
-      const { data, error } = await query;
-      if (error) setError(error.message);
-      else setRecordings(data || []);
-      setLoading(false);
-    };
-    fetchRecordings();
+    fetchNotes();
   }, [subjectId]);
 
+  const fetchNotes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch subjects for display
+      const { data: subjectsData } = await supabase
+        .from("subjects")
+        .select("id, name, icon, color");
+      
+      if (subjectsData) {
+        setSubjects(subjectsData);
+      }
+
+      // Fetch notes
+      let query = supabase
+        .from("notes")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (subjectId) {
+        query = query.eq("subject_id", subjectId);
+      }
+
+      const { data, error: notesError } = await query;
+      
+      if (notesError) throw notesError;
+      setNotes(data || []);
+    } catch (err) {
+      console.error("Error fetching notes:", err);
+      setError("Failed to load notes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSubjectInfo = (subId: string) => {
+    return subjects.find((s) => s.id === subId);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-100 to-white py-8 px-2">
-      <div className="max-w-md mx-auto w-full">
-        <h1 className="text-2xl font-bold mb-6 text-center">{t.notes.title}</h1>
-        {loading && <div className="text-center py-8">{t.notes.loadingRecordings}</div>}
-        {error && <div className="text-center text-red-500 py-8">{error}</div>}
-        {!loading && recordings.length === 0 && (
-          <div className="text-center text-gray-400 py-8">{t.notes.noRecordings}</div>
+    <div className="min-h-screen bg-gradient-to-b from-purple-100 to-white py-8 px-4">
+      <div className="max-w-2xl mx-auto w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">My Notes</h1>
+          <button
+            onClick={() => router.push("/")}
+            className="p-2 hover:bg-white rounded-full transition-colors active:scale-95"
+            title="Back to home"
+          >
+            <Plus className="w-6 h-6 text-gray-700" />
+          </button>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
+            <p className="text-gray-500">Loading your notes...</p>
+          </div>
         )}
-        <ul className="space-y-3">
-          {recordings.map((rec) => (
-            <li
-              key={rec.id}
-              className="bg-white rounded-xl shadow p-3 flex flex-col gap-1 cursor-pointer hover:bg-purple-50 transition relative"
-              onClick={() => router.push(`/note-detail?recordingId=${rec.id}`)}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+            <p className="text-red-600 font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && notes.length === 0 && (
+          <div className="bg-white rounded-3xl p-12 shadow-sm text-center">
+            <div className="text-6xl mb-4">📝</div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+              No Notes Yet
+            </h2>
+            <p className="text-gray-500 mb-6">
+              Save highlights from your transcriptions to create notes
+            </p>
+            <button
+              onClick={() => router.push("/")}
+              className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-2xl hover:shadow-lg transition-all active:scale-95"
             >
-              {/* Badge transcribed */}
-              {rec.transcribed && (
-                <span className="absolute top-2 right-3 bg-purple-100 text-purple-600 text-[11px] px-2 py-0.5 rounded-full font-medium">{t.common.transcribed}</span>
-              )}
-              {/* Subject name only */}
-              <span className="font-semibold text-base text-gray-900 mb-1 capitalize">
-                {rec.title || t.common.recording}
-              </span>
-              {/* Date & duration row */}
-              <div className="flex justify-between items-end w-full mt-1">
-                <span className="text-xs text-gray-400">{new Date(rec.date).toLocaleDateString()}</span>
-                <span className="text-xs text-gray-700 font-semibold">{Math.floor(rec.duration/60)}:{(rec.duration%60).toString().padStart(2,"0")}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
+              Start Recording
+            </button>
+          </div>
+        )}
+
+        {/* Notes List */}
+        {!loading && !error && notes.length > 0 && (
+          <div className="space-y-4">
+            {notes.map((note) => {
+              const subject = getSubjectInfo(note.subject_id);
+              const preview = note.content.substring(0, 120) + (note.content.length > 120 ? "..." : "");
+              
+              return (
+                <button
+                  key={note.id}
+                  onClick={() => router.push(`/note-view?noteId=${note.id}`)}
+                  className="w-full bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Subject Icon */}
+                    <div className="flex-shrink-0 text-3xl">
+                      {subject?.icon || "📝"}
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 mb-1 truncate">
+                        {note.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                        {preview}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span>{subject?.name || "Unknown"}</span>
+                        <span>•</span>
+                        <span>{formatDate(note.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <div className="flex-shrink-0 text-purple-400">
+                      →
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export default function NotesPage() {
-  const { t } = useLanguage();
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white"><div className="text-center py-8">Loading...</div></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
+          <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+        </div>
+      }
+    >
       <NotesContent />
     </Suspense>
   );

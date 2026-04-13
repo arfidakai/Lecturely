@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Trash2, Download, Share2, Sparkles, Loader2, Highlighter, X, Save } from "lucide-react";
+import { ChevronLeft, Trash2, Download, Share2, Sparkles, Loader2, Highlighter, X, Save, FileText } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { fetchWithAuth } from "../lib/fetch-with-auth";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../lib/highlightUtils";
@@ -47,6 +47,7 @@ function NoteDetailContent() {
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [transcriptionId, setTranscriptionId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; title: string; message: string; icon: string }>({ show: false, title: '', message: '', icon: '' });
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const colors = ["yellow", "orange", "red", "green", "blue", "purple", "pink"];
 
@@ -369,6 +370,58 @@ function NoteDetailContent() {
     }
   };
 
+  const handleExportPDF = async () => {
+    const fullText = transcriptions.map((t) => t.text).join("\n\n");
+    const content = `${recording?.title}\n\nDate: ${new Date(recording?.date || "").toLocaleDateString()}\n\n${fullText}${summary ? `\n\nSummary:\n${summary.content}` : ""}`;
+
+    if (!content) {
+      showToast('Error', 'No content to export', '❌');
+      return;
+    }
+
+    setIsExportingPDF(true);
+    try {
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <h1>${recording?.title || 'Recording'}</h1>
+        <p><strong>Date:</strong> ${new Date(recording?.date || "").toLocaleDateString()}</p>
+        <hr/>
+        <pre style="white-space: pre-wrap; word-wrap: break-word;">${fullText}</pre>
+        ${summary ? `<h2>Summary</h2><pre style="white-space: pre-wrap; word-wrap: break-word;">${summary.content}</pre>` : ''}
+      `;
+
+      try {
+        const html2pdf = (window as any).html2pdf;
+        if (html2pdf) {
+          html2pdf.default()
+            .set({ margin: 10, filename: `${recording?.title || 'recording'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' } })
+            .from(element)
+            .save();
+          showToast('Success', 'PDF exported successfully', '✅');
+        } else {
+          throw new Error('PDF library not available');
+        }
+      } catch (err) {
+        // Fallback: download as text file
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${recording?.title || 'recording'}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Success', 'Content exported as text', '✅');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      showToast('Error', 'Failed to export content', '❌');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-100 to-white">
@@ -426,6 +479,14 @@ function NoteDetailContent() {
                 title="Share"
               >
                 <Share2 className="w-5 h-5 text-gray-700" />
+              </button>
+              <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="p-2 hover:bg-purple-50 rounded-full transition-colors active:scale-95 disabled:opacity-50"
+                title="Export as PDF"
+              >
+                <FileText className="w-5 h-5 text-purple-600" />
               </button>
               <button
                 onClick={handleDownload}

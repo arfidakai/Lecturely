@@ -6,7 +6,8 @@ import { supabase } from "../../lib/supabase";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../../lib/highlightUtils";
 import { exportSummaryAsPDF } from "../../lib/pdfExport";
 import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter, Download } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter, Download, FileText } from "lucide-react";
+import NotificationToast from "../../components/NotificationToast";
 
 export default function AiSummaryDetailPage() {
   const router = useRouter();
@@ -31,8 +32,13 @@ export default function AiSummaryDetailPage() {
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; title: string; message: string; icon: string }>({ show: false, title: '', message: '', icon: '' });
 
   const colors = ["none", "yellow", "orange", "red", "green", "blue", "purple", "pink"];
+
+  const showToast = (title: string, message: string, icon: string = '✨') => {
+    setToast({ show: true, title, message, icon });
+  };
 
   useEffect(() => {
     console.log("[AI Summary Detail] recordingId:", recordingId);
@@ -180,26 +186,6 @@ export default function AiSummaryDetailPage() {
     }
   };
 
-  const handleExportPDF = async () => {
-    if (!summaries.length || !recordingData) return;
-    setIsExportingPDF(true);
-    try {
-      const textToCopy = summaries.join("\n\n---\n\n");
-      await exportSummaryAsPDF(
-        textToCopy,
-        recordingData.title || "Summary",
-        (error) => {
-          alert(t.aiSummary.exportError + ": " + error);
-        }
-      );
-      alert(t.aiSummary.exportedPDF);
-    } catch (err) {
-      alert(t.aiSummary.exportError);
-    } finally {
-      setIsExportingPDF(false);
-    }
-  };
-
   const handleMarkImportant = async () => {
     if (!summaryId) return;
     setIsMarkingImportant(true);
@@ -295,8 +281,82 @@ export default function AiSummaryDetailPage() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!summaries.length) {
+      showToast("Export", "No summary to export", "⚠️");
+      return;
+    }
+
+    setIsExportingPDF(true);
+    try {
+      const summaryDate = new Date().toLocaleDateString();
+      const fileName = `Summary_${recordingData?.title || "Recording"}_${summaryDate}.pdf`;
+      
+      // Combine summaries with highlights info
+      const combinedSummary = summaries.join("\n\n---\n\n");
+      
+      // Create HTML for formatting
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h1 style="color: #7c3aed; margin-bottom: 10px;">${recordingData?.title || "Summary"}</h1>
+          <p style="color: #666; font-size: 12px; margin-bottom: 20px;">Created: ${summaryDate}</p>
+          <div style="line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;">
+            ${combinedSummary.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+          </div>
+          ${highlights.length > 0 ? `
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;" />
+            <h2 style="color: #7c3aed; font-size: 16px; margin: 20px 0;">Highlights</h2>
+            <ul style="color: #666; font-size: 14px;">
+              ${highlights.map(h => `<li style="margin: 5px 0;">${h.color.charAt(0).toUpperCase() + h.color.slice(1)}: Offset ${h.startOffset}-${h.endOffset}</li>`).join('')}
+            </ul>
+          ` : ''}
+        </div>
+      `;
+
+      // Try html2pdf first
+      const html2pdf = (window as any).html2pdf;
+      if (html2pdf) {
+        try {
+          const element = document.createElement("div");
+          element.innerHTML = htmlContent;
+          html2pdf.default()
+            .set({ margin: 10, filename: fileName, image: { type: "jpeg", quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { orientation: "portrait", unit: "mm", format: "a4" } })
+            .from(element)
+            .save();
+          showToast("Export", "PDF exported successfully", "✅");
+        } catch {
+          throw new Error("html2pdf failed");
+        }
+      } else {
+        throw new Error("PDF library not available");
+      }
+    } catch (err) {
+      // Fallback: export as text
+      try {
+        const summaryDate = new Date().toLocaleDateString();
+        const fileName = `Summary_${recordingData?.title || "Recording"}_${summaryDate}.txt`;
+        const content = `${recordingData?.title || "Summary"}\nCreated: ${summaryDate}\n\n${summaries.join("\n\n---\n\n")}`;
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Export", "Downloaded as text file", "✅");
+      } catch {
+        showToast("Export Error", "Failed to export summary", "❌");
+      }
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
+    <>
+      <div className="min-h-screen w-full bg-gradient-to-b from-purple-100 to-white">
       <div className="min-h-screen w-full max-w-md mx-auto bg-white overflow-hidden">
         <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 to-white">
           {/* Header */}
@@ -559,5 +619,15 @@ export default function AiSummaryDetailPage() {
         </div>
       </div>
     </div>
+
+    {/* Toast Notification */}
+    <NotificationToast
+      show={toast.show}
+      title={toast.title}
+      message={toast.message}
+      icon={toast.icon}
+      onClose={() => setToast({ ...toast, show: false })}
+    />
+    </>
   );
 }
