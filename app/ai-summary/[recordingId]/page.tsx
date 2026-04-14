@@ -5,11 +5,8 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
 import { getSelectionRange, getHighlightColorStyle, type HighlightRange } from "../../lib/highlightUtils";
 import { exportSummaryAsPDF } from "../../lib/pdfExport";
-import ReactMarkdown from "react-markdown";
-import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter, Download, FileText } from "lucide-react";
-import NotificationToast from "../../components/NotificationToast";
-
-export default function AiSummaryDetailPage() {
+import { ChevronLeft, Loader2, Plus, Copy, Check, Star, Highlighter, Download, FileText, X } from "lucide-react";
+import NotificationToast from "../../components/NotificationToast";export default function AiSummaryDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { recordingId } = params as { recordingId: string };
@@ -183,6 +180,24 @@ export default function AiSummaryDetailPage() {
       setTimeout(() => setCopiedToClipboard(false), 2000);
     } catch (err) {
       alert("Failed to copy");
+    }
+  };
+
+  const handleDeleteHighlight = async (highlightId: string) => {
+    try {
+      const { error } = await supabase
+        .from("highlights")
+        .delete()
+        .eq("id", highlightId);
+
+      if (error) {
+        showToast("Error", "Failed to delete highlight", "❌");
+      } else {
+        setHighlights(highlights.filter(h => h.id !== highlightId));
+        showToast("Success", "Highlight removed", "✨");
+      }
+    } catch (err) {
+      showToast("Error", "Failed to delete highlight", "❌");
     }
   };
 
@@ -510,7 +525,7 @@ export default function AiSummaryDetailPage() {
                       // Build content with highlights
                       const renderContent = () => {
                         if (highlights.length === 0) {
-                          return <ReactMarkdown>{summary}</ReactMarkdown>;
+                          return <>{summary}</>;
                         }
 
                         const sorted = [...highlights].sort(
@@ -532,23 +547,36 @@ export default function AiSummaryDetailPage() {
                             );
                           }
 
-                          // Add highlighted text
+                          // Add highlighted text with delete button
                           const colorStyle = getHighlightColorStyle(highlight.color);
                           const highlightedText = summary.substring(
                             highlight.startOffset,
                             highlight.endOffset
                           );
                           elements.push(
-                            <mark
-                              key={`highlight-${highlight.id}`}
-                              style={{
-                                ...colorStyle,
-                                borderRadius: "2px",
-                                padding: "2px 4px",
-                              }}
-                            >
-                              {highlightedText}
-                            </mark>
+                            <span key={`highlight-${highlight.id}`} className="relative group inline">
+                              <mark
+                                style={{
+                                  ...colorStyle,
+                                  borderRadius: "2px",
+                                  padding: "2px 4px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {highlightedText}
+                              </mark>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (highlight.id) handleDeleteHighlight(highlight.id);
+                                }}
+                                className="absolute -top-8 left-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10"
+                              >
+                                <X className="w-3 h-3 inline mr-1" />
+                                Delete
+                              </button>
+                            </span>
                           );
 
                           lastOffset = highlight.endOffset;
@@ -562,7 +590,7 @@ export default function AiSummaryDetailPage() {
                           );
                         }
 
-                        return <div>{elements}</div>;
+                        return <>{elements}</>;
                       };
 
                       return (
