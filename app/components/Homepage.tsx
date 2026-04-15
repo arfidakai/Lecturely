@@ -307,6 +307,36 @@
     </div>
   )}
 
+  {/* My Notes Section - Only show for existing users */}
+  {!isNewUser && (
+    <div className="px-6 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg text-gray-900">📝 My Notes</h2>
+        </div>
+        <button
+          onClick={() => router.push('/notes')}
+          className="text-sm text-purple-500"
+        >
+          {t.common.seeAll}
+        </button>
+      </div>
+      <button
+        onClick={() => router.push('/notes')}
+        className="w-full bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left flex items-center gap-3"
+      >
+        <div className="bg-blue-100 p-2.5 rounded-xl">
+          <BookOpen className="w-5 h-5 text-blue-500" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-900">View & Manage Notes</p>
+          <p className="text-xs text-gray-400">Access your saved notes and highlights</p>
+        </div>
+        <span className="text-purple-400 text-lg">›</span>
+      </button>
+    </div>
+  )}
+
   {/* Today's Subjects */}
   {/* ... sisa kode sama seperti sebelumnya ... */}
 
