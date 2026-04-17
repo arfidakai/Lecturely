@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, Loader2, Plus } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -40,19 +40,30 @@ function NotesContent() {
       setLoading(true);
       setError(null);
 
+      // Check if user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw new Error("User not authenticated");
+      }
+
       // Fetch subjects for display
-      const { data: subjectsData } = await supabase
+      const { data: subjectsData, error: subjectsError } = await supabase
         .from("subjects")
         .select("id, name, icon, color");
+      
+      if (subjectsError) {
+        console.error("Error fetching subjects:", subjectsError);
+      }
       
       if (subjectsData) {
         setSubjects(subjectsData);
       }
 
-      // Fetch notes
+      // Fetch notes - RLS will automatically filter by user_id
       let query = supabase
         .from("notes")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       
       if (subjectId) {
@@ -61,11 +72,14 @@ function NotesContent() {
 
       const { data, error: notesError } = await query;
       
-      if (notesError) throw notesError;
+      if (notesError) {
+        console.error("Error fetching notes:", notesError);
+        throw notesError;
+      }
       setNotes(data || []);
-    } catch (err) {
-      console.error("Error fetching notes:", err);
-      setError("Failed to load notes");
+    } catch (err: any) {
+      console.error("Error in fetchNotes:", err);
+      setError(err.message || "Failed to load notes");
     } finally {
       setLoading(false);
     }
@@ -89,14 +103,16 @@ function NotesContent() {
       <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Notes</h1>
-          <button
-            onClick={() => router.push("/")}
-            className="p-2 hover:bg-white rounded-full transition-colors active:scale-95"
-            title="Back to home"
-          >
-            <Plus className="w-6 h-6 text-gray-700" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-white rounded-full transition-colors active:scale-95"
+              title="Go back"
+            >
+              <ChevronLeft className="w-6 h-6 text-gray-700" />
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900">My Notes</h1>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -109,8 +125,19 @@ function NotesContent() {
 
         {/* Error State */}
         {error && !loading && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
-            <p className="text-red-600 font-medium">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+            <p className="text-red-600 font-medium mb-2">{error}</p>
+            <p className="text-sm text-red-500">
+              {error === "User not authenticated" 
+                ? "Please log in to view your notes"
+                : "Make sure the notes table is created in Supabase"}
+            </p>
+            <button
+              onClick={() => fetchNotes()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 
