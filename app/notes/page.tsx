@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../contexts/LanguageContext";
+import NotificationToast from "../components/NotificationToast";
 
 interface Note {
   id: string;
@@ -30,6 +31,16 @@ function NotesContent() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; title: string; message: string; icon: string }>({ show: false, title: '', message: '', icon: '' });
+
+  const showToast = (title: string, message: string, icon: string = '✨') => {
+    setToast({ show: true, title, message, icon });
+  };
 
   useEffect(() => {
     fetchNotes();
@@ -85,6 +96,53 @@ function NotesContent() {
     }
   };
 
+  const handleSaveNote = async () => {
+    if (!selectedSubject || !noteTitle.trim() || !noteContent.trim()) {
+      showToast("Validation", "Please fill in all fields", "⚠️");
+      return;
+    }
+
+    setSavingNote(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw new Error("User not authenticated");
+      }
+
+      const { data, error } = await supabase
+        .from("notes")
+        .insert([
+          {
+            user_id: user.id,
+            subject_id: selectedSubject,
+            title: noteTitle,
+            content: noteContent,
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("Error saving note:", error);
+        throw error;
+      }
+
+      showToast("Success", "Note created successfully", "✅");
+      setNoteTitle("");
+      setNoteContent("");
+      setSelectedSubject("");
+      setShowAddNote(false);
+      
+      // Refresh notes list
+      await fetchNotes();
+    } catch (err: any) {
+      console.error("Error in handleSaveNote:", err);
+      showToast("Error", err.message || "Failed to save note", "❌");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
   const getSubjectInfo = (subId: string) => {
     return subjects.find((s) => s.id === subId);
   };
@@ -113,6 +171,13 @@ function NotesContent() {
             </button>
             <h1 className="text-3xl font-bold text-gray-900">My Notes</h1>
           </div>
+          <button
+            onClick={() => setShowAddNote(true)}
+            className="p-2 hover:bg-purple-100 rounded-full transition-colors active:scale-95"
+            title="Add new note"
+          >
+            <Plus className="w-6 h-6 text-purple-600" />
+          </button>
         </div>
 
         {/* Loading State */}
@@ -205,6 +270,97 @@ function NotesContent() {
           </div>
         )}
       </div>
+
+      {/* Add Note Modal */}
+      {showAddNote && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Add New Note</h2>
+              <button
+                onClick={() => setShowAddNote(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-700" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Subject Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Select Subject *
+                </label>
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">-- Choose a subject --</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.icon} {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Note Title *
+                </label>
+                <input
+                  type="text"
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  placeholder="Enter note title"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* Content Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Note Content *
+                </label>
+                <textarea
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Write your notes here..."
+                  rows={8}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Save Button */}
+              <button
+                onClick={handleSaveNote}
+                disabled={savingNote}
+                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 px-6 rounded-xl hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 font-medium"
+              >
+                {savingNote ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </div>
+                ) : (
+                  "Save Note"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      <NotificationToast
+        show={toast.show}
+        title={toast.title}
+        message={toast.message}
+        icon={toast.icon}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
     </div>
   );
 }
