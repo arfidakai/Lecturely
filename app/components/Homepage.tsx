@@ -488,9 +488,11 @@
             </h2>
             <button
               onClick={() => router.push('/all-subjects')}
-              className="text-sm text-purple-500"
+              className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1 transition-colors"
+              title="Add new subject"
             >
-              {t.common.seeAll}
+              Add Subject
+              <span>+</span>
             </button>
           </div>
 
