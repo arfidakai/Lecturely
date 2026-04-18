@@ -98,7 +98,7 @@ function NotesContent() {
 
   const handleSaveNote = async () => {
     if (!selectedSubject || !noteTitle.trim() || !noteContent.trim()) {
-      showToast("Validation", "Please fill in all fields", "⚠️");
+      showToast("Please fill all fields", "Select a subject, add a title, and write your note", "⚠️");
       return;
     }
 
@@ -179,6 +179,45 @@ function NotesContent() {
             <Plus className="w-6 h-6 text-purple-600" />
           </button>
         </div>
+
+        {/* Subjects Section */}
+        {!loading && !error && subjects.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Subjects</h2>
+              <button
+                onClick={() => router.push("/all-subjects")}
+                className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1 transition-colors"
+              >
+                Manage
+                <span>→</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {subjects.map((subject) => {
+                const noteCount = notes.filter((n) => n.subject_id === subject.id).length;
+                return (
+                  <button
+                    key={subject.id}
+                    onClick={() => {
+                      // Filter notes by subject
+                      router.push(`/notes?subjectId=${subject.id}`);
+                    }}
+                    className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] text-left"
+                  >
+                    <div className="text-3xl mb-2">{subject.icon}</div>
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">
+                      {subject.name}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {noteCount} {noteCount === 1 ? "note" : "notes"}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -286,23 +325,29 @@ function NotesContent() {
             </div>
 
             <div className="space-y-4">
-              {/* Subject Selection */}
+              {/* Subject Selection - Visual Grid */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-medium text-gray-900 mb-3">
                   Select Subject *
                 </label>
-                <select
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">-- Choose a subject --</option>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.icon} {subject.name}
-                    </option>
+                    <button
+                      key={subject.id}
+                      onClick={() => setSelectedSubject(subject.id)}
+                      className={`p-4 rounded-2xl text-left transition-all active:scale-[0.98] ${
+                        selectedSubject === subject.id
+                          ? "bg-purple-100 border-2 border-purple-500 shadow-md"
+                          : "bg-gray-50 border-2 border-gray-200 hover:bg-gray-100"
+                      }`}
+                    >
+                      <div className="text-3xl mb-2">{subject.icon}</div>
+                      <h3 className="font-semibold text-gray-900 text-sm truncate">
+                        {subject.name}
+                      </h3>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Title Input */}
