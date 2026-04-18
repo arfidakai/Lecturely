@@ -284,12 +284,6 @@
            {/* <Bell className="w-4 h-4 text-purple-500" /> */}
           <h2 className="text-lg text-gray-900">{t.home.myReminders}</h2>
         </div>
-        <button
-          onClick={() => router.push('/my-reminders')}
-          className="text-sm text-purple-500"
-        >
-          {t.common.seeAll}
-        </button>
       </div>
       <button
         onClick={() => router.push('/my-reminders')}
@@ -314,12 +308,7 @@
         <div className="flex items-center gap-2">
           <h2 className="text-lg text-gray-900">📝 My Notes</h2>
         </div>
-        <button
-          onClick={() => router.push('/notes')}
-          className="text-sm text-purple-500"
-        >
-          {t.common.seeAll}
-        </button>
+      
       </div>
       <button
         onClick={() => router.push('/notes')}
