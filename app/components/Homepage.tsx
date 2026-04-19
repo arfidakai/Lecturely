@@ -326,10 +326,6 @@
     </div>
   )}
 
-  {/* Today's Subjects */}
-  {/* ... sisa kode sama seperti sebelumnya ... */}
-
-        {/* Welcome Guide for New Users */}
         {isNewUser ? (
           <div className="flex-1 px-6 pb-8 overflow-y-auto">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-5 mb-4">
