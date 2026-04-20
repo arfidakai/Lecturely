@@ -276,12 +276,10 @@
     </div>
   )}
 
-  {/* My Reminders Section - Only show for existing users */}
   {!isNewUser && (
     <div className="px-6 mb-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-           {/* <Bell className="w-4 h-4 text-purple-500" /> */}
           <h2 className="text-lg text-gray-900">{t.home.myReminders}</h2>
         </div>
       </div>
@@ -301,7 +299,6 @@
     </div>
   )}
 
-  {/* My Notes Section - Only show for existing users */}
   {!isNewUser && (
     <div className="px-6 mb-6">
       <div className="flex items-center justify-between mb-3">
@@ -524,129 +521,6 @@
       );
     })()}
   </div>
-            {/* <div className="px-6 mb-6">
-              {(() => {
-                const todaySubjects = filterSubjectsByToday(subjects);
-                if (todaySubjects.length > 0) {
-                  // Ada subject hari ini
-                  return (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-lg text-gray-900">Today's Subjects</h2>
-                        <button
-                          onClick={() => router.push('/all-subjects')}
-                          className="text-sm text-purple-500"
-                        >
-                          See All
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {todaySubjects.slice(0, 4).map((subject) => {
-                          const subjectSlug = getSlugFromUUID(subject.id) || subject.id;
-                          return (
-                            <button
-                              key={subject.id}
-                              onClick={() => onNavigateToNotesList(subjectSlug)}
-                              className="bg-white rounded-2xl p-5 transition-all active:scale-[0.98] text-left"
-                              style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                            >
-                              <div
-                                className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 text-2xl"
-                                style={{ backgroundColor: `${subject.color}20` }}
-                              >
-                                {subject.icon}
-                              </div>
-                              <div className="text-sm text-gray-900 mb-1 line-clamp-1">
-                                {subject.name}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {recordings.filter((r) => r.subjectId === subject.id).length}{" "}
-                                notes
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  );
-                }
-                // Tidak ada subject hari ini, cek upcoming
-                // Cari hari terdekat yang ada subject
-                const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                const todayIdx = new Date().getDay();
-                let foundDayIdx = null;
-                let foundSubjects = [];
-                for (let offset = 1; offset <= 6; offset++) {
-                  const idx = (todayIdx + offset) % 7;
-                  const dayName = days[idx];
-                  const upcoming = subjects.filter(subj => Array.isArray(subj.schedule_days) && subj.schedule_days.includes(dayName));
-                  if (upcoming.length > 0) {
-                    foundDayIdx = idx;
-                    foundSubjects = upcoming;
-                    break;
-                  }
-                }
-                if (foundSubjects.length > 0) {
-                  // Ada upcoming
-                  const label = foundDayIdx === (todayIdx + 1) % 7 ? 'Tomorrow' : days[foundDayIdx].slice(0, 3);
-                  return (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-lg text-gray-900">Upcoming · {label}</h2>
-                        <button
-                          onClick={() => router.push('/all-subjects')}
-                          className="text-sm text-purple-500"
-                        >
-                          See All
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {foundSubjects.slice(0, 4).map((subject) => {
-                          const subjectSlug = getSlugFromUUID(subject.id) || subject.id;
-                          return (
-                            <button
-                              key={subject.id}
-                              onClick={() => onNavigateToNotesList(subjectSlug)}
-                              className="bg-white rounded-2xl p-5 transition-all active:scale-[0.98] text-left"
-                              style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                            >
-                              <div
-                                className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 text-2xl"
-                                style={{ backgroundColor: `${subject.color}20` }}
-                              >
-                                {subject.icon}
-                              </div>
-                              <div className="text-sm text-gray-900 mb-1 line-clamp-1">
-                                {subject.name}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {recordings.filter((r) => r.subjectId === subject.id).length}{" "}
-                                notes
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  );
-                }
-                // Tidak ada subject sama sekali
-                return (
-                  <div className="flex flex-col items-center justify-center py-10">
-                    <div className="text-5xl mb-3">📚</div>
-                    <div className="text-lg font-semibold text-gray-700 mb-2">No Subjects Yet</div>
-                    <div className="text-sm text-gray-400 mb-4 text-center">Add your first subject to get started organizing your lectures!</div>
-                    <button
-                      onClick={() => router.push('/all-subjects')}
-                      className="px-5 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors active:scale-95"
-                    >
-                      Go to All Subjects
-                    </button>
-                  </div>
-                );
-              })()}
-            </div> */}
-
             {/* Recent Recordings */}
             <div className="px-6 pb-8 flex-1 overflow-y-auto">
               <div className="flex items-center gap-2 mb-2">
