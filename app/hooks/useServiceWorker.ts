@@ -1,25 +1,31 @@
 "use client";
 import { useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchWithAuth } from '../lib/fetch-with-auth';
 
 export function useServiceWorker() {
+  const { user } = useAuth();
+
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js')
-        .then((registration) => {
+        .then(async (registration) => {
           console.log('[App] Service Worker registered successfully');
           
-          // Register periodic background sync (every 15 minutes)
-          // Note: This requires HTTPS and the browser supports it
-          if ('periodicSync' in registration) {
-            (registration as any).periodicSync.register('check-reminders', {
-              minInterval: 15 * 60 * 1000, // 15 minutes
-            }).catch((error: any) => {
-              // Silently catch - periodic sync not critical, app still works
-              console.log('[App] Periodic sync registration skipped (requires HTTPS or not supported)');
-            });
+          // Request notification permission and subscribe to push
+          if ('Notification' in window && user) {
+            if (Notification.permission === 'default') {
+              const permission = await Notification.requestPermission();
+              if (permission === 'granted') {
+                await subscribeToPush(registration, user.id);
+              }
+            } else if (Notification.permission === 'granted') {
+              // Already granted, ensure subscribed
+              await subscribeToPush(registration, user.id);
+            }
           }
-          
+
           // Check for updates periodically
           const updateCheckInterval = setInterval(() => {
             registration.update().catch((error: any) => 
@@ -32,7 +38,6 @@ export function useServiceWorker() {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New service worker available
                   console.log('[App] New service worker available');
                 }
               });
@@ -45,7 +50,47 @@ export function useServiceWorker() {
           console.error('[App] Service Worker registration failed:', error);
         });
     }
-  }, []);
+  }, [user]);
+
+  const subscribeToPush = async (registration: ServiceWorkerRegistration, userId: string) => {
+    try {
+      // Get push subscription
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        });
+      }
+
+      // Convert subscription to JSON (ArrayBuffer keys need to be base64 encoded)
+      const authKey = subscription.getKey('auth');
+      const p256dhKey = subscription.getKey('p256dh');
+
+      const subscriptionJson = {
+        endpoint: subscription.endpoint,
+        keys: {
+          auth: authKey ? btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(authKey)))) : '',
+          p256dh: p256dhKey ? btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(p256dhKey)))) : '',
+        },
+      };
+
+      // Save subscription to database via API
+      const response = await fetchWithAuth('/api/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ subscription: subscriptionJson }),
+      });
+
+      if (response.ok) {
+        console.log('[App] Push subscription saved to database');
+      } else {
+        console.error('[App] Failed to save push subscription');
+      }
+    } catch (error) {
+      console.error('[App] Error subscribing to push notifications:', error);
+    }
+  };
 
   const showNativeNotification = async (title: string, options?: NotificationOptions) => {
     if ('serviceWorker' in navigator && 'Notification' in window) {
@@ -63,29 +108,7 @@ export function useServiceWorker() {
     return null;
   };
 
-  // Send message to service worker to check reminders
-  const triggerBackgroundSync = async () => {
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Try to use background sync API
-        if ('sync' in registration) {
-          await (registration as any).sync.register('sync-reminders');
-          console.log('[App] Background sync triggered');
-        }
-        
-        // Also send a message to service worker for immediate check
-        registration.active?.postMessage({
-          type: 'CHECK_REMINDERS',
-        });
-      } catch (error: any) {
-        // Silently catch - background sync not critical
-        // App will still check reminders on next focus/visibility change
-        console.log('[App] Background sync not available (requires support or HTTPS)');
-      }
-    }
+  return {
+    showNativeNotification,
   };
-
-  return { showNativeNotification, triggerBackgroundSync };
 }
