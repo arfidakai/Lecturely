@@ -435,11 +435,10 @@
               <button
                 onClick={() => {
                   setOnboardingComplete(true);
-                  onNavigateToSubjects();
                 }}
                 className="w-full mt-4 bg-purple-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-purple-700 transition-all active:scale-[0.98]"
               >
-                Get Started - Add Your First Subject
+                Get Started
               </button>
             </div>
           </div>
