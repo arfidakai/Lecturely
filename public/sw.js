@@ -230,8 +230,6 @@ async function checkRemindersInBackground() {
               `${subjectIcon} Review Reminder: ${subjectName}`,
               {
                 body: `Time to review: ${recordingTitle}`,
-                icon: '/icon-192x192.png',
-                badge: '/icon-192x192.png',
                 tag: reminder.id,
                 requireInteraction: true,
                 vibrate: [200, 100, 200],
