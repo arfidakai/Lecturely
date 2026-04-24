@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { fetchWithAuth } from '../lib/fetch-with-auth';
 import { useNotifications } from './useNotifications';
 import { useServiceWorker } from './useServiceWorker';
@@ -20,36 +20,60 @@ interface Reminder {
 
 export function useReminderChecker() {
   const { permission, showNotification } = useNotifications();
-  const { showNativeNotification } = useServiceWorker();
+  const { showNativeNotification, triggerBackgroundSync } = useServiceWorker();
+  const isCheckingRef = useRef(false);
+  const lastCheckTimeRef = useRef<number>(0);
 
   const checkReminders = useCallback(async () => {
-    if (permission !== 'granted') {
+    // Prevent duplicate simultaneous checks
+    if (isCheckingRef.current) {
+      console.log('[Reminders] Check already in progress, skipping');
       return;
     }
 
+    // Don't check too frequently (minimum 10 seconds between checks)
+    const now = Date.now();
+    if (now - lastCheckTimeRef.current < 10000) {
+      console.log('[Reminders] Checked recently, skipping');
+      return;
+    }
+
+    if (permission !== 'granted') {
+      console.log('[Reminders] Permission not granted');
+      return;
+    }
+
+    isCheckingRef.current = true;
+    lastCheckTimeRef.current = now;
+
     try {
+      console.log('[Reminders] Starting reminder check...');
       // Fetch all pending reminders
       const response = await fetchWithAuth('/api/reminders');
       if (!response.ok) {
+        console.error('[Reminders] Failed to fetch reminders:', response.status);
         return;
       }
 
       const data = await response.json();
       const reminders: Reminder[] = data.reminders || [];
 
-      const now = new Date();
+      const currentTime = new Date();
       const pending = reminders.filter(r => !r.sent);
+
+      console.log(`[Reminders] Found ${pending.length} pending reminders`);
 
       for (const reminder of pending) {
         const reminderTime = new Date(reminder.reminder_time);
-        const diffInMinutes = (reminderTime.getTime() - now.getTime()) / (1000 * 60);
+        const diffInMinutes = (reminderTime.getTime() - currentTime.getTime()) / (1000 * 60);
 
         // Show notification if reminder time has passed (within last 5 minutes)
-        // This ensures we don't miss notifications due to timing
         if (diffInMinutes <= 0 && diffInMinutes >= -5) {
           const subjectName = reminder.recordings?.subjects?.name || 'Subject';
           const subjectIcon = reminder.recordings?.subjects?.icon || '📚';
           const recordingTitle = reminder.recordings?.title || 'Recording';
+
+          console.log(`[Reminders] Showing notification for: ${subjectName}`);
 
           // Show custom in-app notification
           showNotification(
@@ -75,36 +99,76 @@ export function useReminderChecker() {
               tag: reminder.id,
               data: {
                 url: `/transcription/${reminder.recording_id}/${reminder.recordings?.subject_id || ''}`,
+                reminderId: reminder.id,
               },
             }
           );
 
           // Mark reminder as sent
-          const updateResponse = await fetchWithAuth('/api/reminders', {
-            method: 'PUT',
-            body: JSON.stringify({
-              id: reminder.id,
-              sent: true,
-            }),
-          });
+          try {
+            const updateResponse = await fetchWithAuth('/api/reminders', {
+              method: 'PUT',
+              body: JSON.stringify({
+                id: reminder.id,
+                sent: true,
+              }),
+            });
+
+            if (!updateResponse.ok) {
+              console.error('[Reminders] Failed to mark reminder as sent');
+            }
+          } catch (error) {
+            console.error('[Reminders] Error marking reminder as sent:', error);
+          }
         }
       }
-    } catch (error) {
-      console.error('Error checking reminders:', error);
+    } catch (error: any) {
+      console.error('[Reminders] Error in checkReminders:', error);
+    } finally {
+      isCheckingRef.current = false;
     }
-  }, [permission, showNotification]);
+  }, [permission, showNotification, showNativeNotification]);
 
+  // Setup periodic checking when tab is active
   useEffect(() => {
     if (permission !== 'granted') return;
+
+    console.log('[Reminders] Setting up periodic reminder checks');
 
     // Check immediately
     checkReminders();
 
-    // Check every 30 seconds
+    // Check every 30 seconds while tab is active
     const interval = setInterval(checkReminders, 30000);
 
-    return () => clearInterval(interval);
-  }, [permission, checkReminders]);
+    // Also check when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Reminders] Tab became visible, checking reminders');
+        checkReminders();
+      } else {
+        console.log('[Reminders] Tab became hidden, triggering background sync');
+        // Trigger background sync when tab goes to background
+        triggerBackgroundSync?.();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also check when page regains focus
+    const handleFocus = () => {
+      console.log('[Reminders] Window regained focus, checking reminders');
+      checkReminders();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [permission, checkReminders, triggerBackgroundSync]);
 
   return { checkReminders };
 }
