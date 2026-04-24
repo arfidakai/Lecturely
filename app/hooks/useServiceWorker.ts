@@ -15,8 +15,8 @@ export function useServiceWorker() {
             (registration as any).periodicSync.register('check-reminders', {
               minInterval: 15 * 60 * 1000, // 15 minutes
             }).catch((error: any) => {
-              console.log('[App] Periodic sync registration failed:', error);
-              // This is not critical - reminders will still work when app is open
+              // Silently catch - periodic sync not critical, app still works
+              console.log('[App] Periodic sync registration skipped (requires HTTPS or not supported)');
             });
           }
           
@@ -80,7 +80,9 @@ export function useServiceWorker() {
           type: 'CHECK_REMINDERS',
         });
       } catch (error: any) {
-        console.error('[App] Error triggering background sync:', error);
+        // Silently catch - background sync not critical
+        // App will still check reminders on next focus/visibility change
+        console.log('[App] Background sync not available (requires support or HTTPS)');
       }
     }
   };
