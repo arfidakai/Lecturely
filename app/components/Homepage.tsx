@@ -190,11 +190,18 @@
                   </p>
                 </div>
                 <button
+                  onClick={() => { setShowUserMenu(false); router.push("/profile"); }}
+                  className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors text-gray-700"
+                >
+                  <UserIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t.settings.profile}</span>
+                </button>
+                <button
                   onClick={handleLogout}
                   className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors text-red-500"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="text-sm font-medium">Sign Out</span>
+                  <span className="text-sm font-medium">{t.common.signOut}</span>
                 </button>
               </div>
             )}
