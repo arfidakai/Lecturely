@@ -5,6 +5,7 @@ import { ChevronLeft, User, Mail, Calendar, LogOut, Check, Loader2, Lock } from 
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
+import { uploadAvatar } from "../lib/supabase";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
@@ -25,18 +26,6 @@ export default function ProfilePage() {
   );
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (avatarPreview && avatarFile) {
-        try {
-          URL.revokeObjectURL(avatarPreview);
-        } catch (e) {
- 
-        }
-      }
-    };
-  }, [avatarPreview, avatarFile]);
 
   const isGoogleUser = user?.app_metadata?.provider === "google";
 
@@ -70,6 +59,38 @@ export default function ProfilePage() {
       toast.success(t.common.saved);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview && avatarFile) {
+        try {
+          URL.revokeObjectURL(avatarPreview);
+        } catch (e) {
+        }
+      }
+    };
+  }, [avatarPreview, avatarFile]);
+  useEffect(() => {
+    let mounted = true;
+    const init = async () => {
+      const avatarPath = (user?.user_metadata as any)?.avatar_path;
+      if (!avatarPath) return;
+      try {
+        const res = await fetch('/api/avatars/signed-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: avatarPath, expires: 60 }),
+        });
+        const json = await res.json();
+        if (res.ok && mounted) setAvatarPreview(json.signedUrl);
+      } catch (e) {
+      }
+    };
+    init();
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword !== confirmPassword) {
@@ -171,26 +192,23 @@ export default function ProfilePage() {
                 if (!avatarFile) return toast.error(t.common.error);
                 setUploadingAvatar(true);
                 try {
-                  const fileExt = avatarFile.name.split('.').pop();
-                  const filePath = `avatars/${user?.id}/${Date.now()}.${fileExt}`;
-
-                  const { data, error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, avatarFile, { upsert: true });
-
-                  if (uploadError) throw uploadError;
-
-                  const { data: urlData } = await supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-
-                  const publicUrl = urlData.publicUrl;
+                  const filePath = await uploadAvatar(avatarFile, user?.id || '');
 
                   const { error: updateError } = await supabase.auth.updateUser({
-                    data: { avatar_url: publicUrl },
+                    data: { avatar_path: filePath },
                   });
-
                   if (updateError) throw updateError;
+
+                  const res = await fetch('/api/avatars/signed-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: filePath, expires: 60 }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json?.error || 'Signed URL error');
+
+                  const signedUrl = json.signedUrl;
+                  setAvatarPreview(signedUrl);
 
                   toast.success(t.common.saved);
                   setAvatarFile(null);
