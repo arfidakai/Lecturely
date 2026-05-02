@@ -5,3 +5,39 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+/**
+ * Upload an avatar image to the `avatars` bucket and return its public URL.
+ * - `file` can be a `File` or `Blob` from an <input type="file">.
+ * - `userId` is used to namespace the file path.
+ */
+export async function uploadAvatar(file: File | Blob, userId: string): Promise<string> {
+	const fileExt = file instanceof File && file.name ? file.name.split('.').pop() : 'png';
+	const filePath = `avatars/${userId}/${Date.now()}.${fileExt}`;
+
+	const uploadOptions: any = { upsert: true };
+	if (file instanceof File && file.type) uploadOptions.contentType = file.type;
+
+	const { error: uploadError } = await supabase.storage
+		.from('avatars')
+		.upload(filePath, file, uploadOptions);
+
+	if (uploadError) {
+		throw uploadError;
+	}
+
+	const { data: urlData, error: urlError } = await supabase.storage
+		.from('avatars')
+		.getPublicUrl(filePath);
+
+	if (urlError) {
+		throw urlError;
+	}
+
+	return urlData.publicUrl;
+}
+
+export function getAvatarPublicUrl(path: string): string {
+	const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+	return data.publicUrl;
+}
+

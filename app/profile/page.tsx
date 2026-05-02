@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, User, Mail, Calendar, LogOut, Check, Loader2, Lock } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -19,6 +19,24 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    user?.user_metadata?.avatar_url || null
+  );
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview && avatarFile) {
+        try {
+          URL.revokeObjectURL(avatarPreview);
+        } catch (e) {
+ 
+        }
+      }
+    };
+  }, [avatarPreview, avatarFile]);
 
   const isGoogleUser = user?.app_metadata?.provider === "google";
 
@@ -102,7 +120,17 @@ export default function ProfilePage() {
         {/* Avatar + Info */}
         <div className="bg-white rounded-3xl shadow-sm p-6 flex flex-col items-center gap-3 border border-purple-100">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-200">
-            <span className="text-3xl font-bold text-white">{getInitials()}</span>
+            {avatarPreview ? (
+              // show uploaded avatar
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarPreview}
+                alt="avatar"
+                className="w-20 h-20 rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-3xl font-bold text-white">{getInitials()}</span>
+            )}
           </div>
           <div className="text-center">
             <p className="text-lg font-semibold text-gray-900">
@@ -118,6 +146,67 @@ export default function ProfilePage() {
             </span>
           </div>
         </div>
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files && e.target.files[0];
+                if (f) {
+                  setAvatarFile(f);
+                  setAvatarPreview(URL.createObjectURL(f));
+                }
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-2xl text-sm hover:bg-gray-50"
+            >
+              {(t.settings as any).changePhoto || "Change photo"}
+            </button>
+            <button
+              onClick={async () => {
+                if (!avatarFile) return toast.error(t.common.error);
+                setUploadingAvatar(true);
+                try {
+                  const fileExt = avatarFile.name.split('.').pop();
+                  const filePath = `avatars/${user?.id}/${Date.now()}.${fileExt}`;
+
+                  const { data, error: uploadError } = await supabase.storage
+                    .from('avatars')
+                    .upload(filePath, avatarFile, { upsert: true });
+
+                  if (uploadError) throw uploadError;
+
+                  const { data: urlData } = await supabase.storage
+                    .from('avatars')
+                    .getPublicUrl(filePath);
+
+                  const publicUrl = urlData.publicUrl;
+
+                  const { error: updateError } = await supabase.auth.updateUser({
+                    data: { avatar_url: publicUrl },
+                  });
+
+                  if (updateError) throw updateError;
+
+                  toast.success(t.common.saved);
+                  setAvatarFile(null);
+                } catch (err: any) {
+                  console.error('Avatar upload error', err);
+                  toast.error(err?.message || t.common.error);
+                } finally {
+                  setUploadingAvatar(false);
+                }
+              }}
+              disabled={uploadingAvatar}
+              className="px-3 py-1.5 bg-purple-600 text-white rounded-2xl text-sm disabled:opacity-60"
+            >
+              {uploadingAvatar ? 'Uploading...' : (t.settings as any).savePhoto || 'Save photo'}
+            </button>
+          </div>
 
         {/* Edit Name */}
         <div className="bg-white rounded-3xl shadow-sm p-5 border border-purple-100">
