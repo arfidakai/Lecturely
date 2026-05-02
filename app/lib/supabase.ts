@@ -11,11 +11,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  * - `userId` is used to namespace the file path.
  */
 export async function uploadAvatar(file: File | Blob, userId: string): Promise<string> {
-	const fileExt = file instanceof File && file.name ? file.name.split('.').pop() : 'png';
+	const fileExt = file instanceof File && (file as File).name ? (file as File).name.split('.').pop() : 'png';
 	const filePath = `avatars/${userId}/${Date.now()}.${fileExt}`;
 
 	const uploadOptions: any = { upsert: true };
-	if (file instanceof File && file.type) uploadOptions.contentType = file.type;
+	if (file instanceof File && (file as File).type) uploadOptions.contentType = (file as File).type;
 
 	const { error: uploadError } = await supabase.storage
 		.from('avatars')
@@ -25,15 +25,7 @@ export async function uploadAvatar(file: File | Blob, userId: string): Promise<s
 		throw uploadError;
 	}
 
-	const { data: urlData, error: urlError } = await supabase.storage
-		.from('avatars')
-		.getPublicUrl(filePath);
-
-	if (urlError) {
-		throw urlError;
-	}
-
-	return urlData.publicUrl;
+	return filePath;
 }
 
 export function getAvatarPublicUrl(path: string): string {
