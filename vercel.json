@@ -4,5 +4,8 @@
       "path": "/api/cron/reminders",
       "schedule": "0 9 * * *"
     }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
